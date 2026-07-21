@@ -156,7 +156,7 @@ Respond ONLY with a valid JSON array. No markdown, no explanation.`
         },
         body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt }] }] }),
       })
-    } else if (currentActive === 'openai' || currentActive === 'custom') {
+    } else if (currentActive === 'openai' || (currentActive === 'custom' && providerConfig.customFormat !== 'anthropic')) {
       response = await fetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -169,7 +169,7 @@ Respond ONLY with a valid JSON array. No markdown, no explanation.`
           temperature: 0.3,
         }),
       })
-    } else if (currentActive === 'anthropic') {
+    } else if (currentActive === 'anthropic' || (currentActive === 'custom' && providerConfig.customFormat === 'anthropic')) {
       response = await fetch(`${baseUrl}/messages`, {
         method: 'POST',
         headers: {
@@ -195,12 +195,14 @@ Respond ONLY with a valid JSON array. No markdown, no explanation.`
     const data = await response.json()
     let content = ''
 
-    if (currentActive === 'openai' || currentActive === 'custom') {
-      content = data.choices?.[0]?.message?.content || ''
-    } else if (currentActive === 'anthropic') {
-      content = data.content?.[0]?.text || ''
-    } else if (currentActive === 'gemini') {
+    const usesAnthropicFormat = currentActive === 'anthropic' || (currentActive === 'custom' && providerConfig.customFormat === 'anthropic')
+
+    if (currentActive === 'gemini') {
       content = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+    } else if (usesAnthropicFormat) {
+      content = data.content?.[0]?.text || ''
+    } else {
+      content = data.choices?.[0]?.message?.content || ''
     }
 
     const jsonMatch = content.match(/\[[\s\S]*\]/)

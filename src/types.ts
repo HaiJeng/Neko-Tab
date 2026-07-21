@@ -90,6 +90,9 @@ export interface AIProviderConfig {
   apiKey: string
   baseUrl?: string
   model?: string
+  // For custom providers: which wire format the endpoint speaks.
+  // Defaults to 'openai' when unset (back-compat with existing custom configs).
+  customFormat?: 'openai' | 'anthropic'
 }
 
 export interface AIMemory {

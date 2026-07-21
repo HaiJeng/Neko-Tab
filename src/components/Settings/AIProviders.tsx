@@ -19,6 +19,7 @@ export function AIProviders() {
   const [apiKey, setApiKey] = useState('')
   const [customBaseUrl, setCustomBaseUrl] = useState('')
   const [customModel, setCustomModel] = useState('')
+  const [customFormat, setCustomFormat] = useState<'openai' | 'anthropic'>('openai')
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
   const [editingKey, setEditingKey] = useState<AIProvider | null>(null)
@@ -33,12 +34,14 @@ export function AIProviders() {
       apiKey: apiKey.trim(),
       baseUrl: newProvider === 'custom' ? customBaseUrl : undefined,
       model: newProvider === 'custom' ? customModel : providerDefaults[newProvider].model,
+      customFormat: newProvider === 'custom' ? customFormat : undefined,
     }
 
     await saveProvider(providerConfig)
     setApiKey('')
     setCustomBaseUrl('')
     setCustomModel('')
+    setCustomFormat('openai')
     setShowAddForm(false)
 
     if (!activeProvider) {
@@ -74,11 +77,9 @@ export function AIProviders() {
 
       let response: Response
 
-      if (providerType === 'openai' || providerType === 'custom') {
-        response = await fetch(`${baseUrl}/models`, {
-          headers: { 'Authorization': `Bearer ${provider.apiKey}` },
-        })
-      } else if (providerType === 'anthropic') {
+      const usesAnthropicFormat = providerType === 'anthropic' || (providerType === 'custom' && provider.customFormat === 'anthropic')
+
+      if (usesAnthropicFormat) {
         response = await fetch(`${baseUrl}/messages`, {
           method: 'POST',
           headers: {
@@ -87,6 +88,10 @@ export function AIProviders() {
             'anthropic-version': '2023-06-01',
           },
           body: JSON.stringify({ model: provider.model || 'claude-3-haiku-20240307', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] }),
+        })
+      } else if (providerType === 'openai' || providerType === 'custom') {
+        response = await fetch(`${baseUrl}/models`, {
+          headers: { 'Authorization': `Bearer ${provider.apiKey}` },
         })
       } else if (providerType === 'gemini') {
         response = await fetch(`${baseUrl}/models`, {
@@ -148,10 +153,21 @@ export function AIProviders() {
 
             {newProvider === 'custom' && (
               <>
+                <div className="saas-segmented-control" style={{ marginBottom: 8 }}>
+                  {(['openai', 'anthropic'] as const).map(f => (
+                    <button
+                      key={f}
+                      className={`saas-segment ${customFormat === f ? 'active' : ''}`}
+                      onClick={() => setCustomFormat(f)}
+                    >
+                      {f === 'openai' ? 'OpenAI format' : 'Anthropic format'}
+                    </button>
+                  ))}
+                </div>
                 <input
                   type="text"
                   className="saas-input"
-                  placeholder="Base URL (e.g., https://api.openai.com/v1)"
+                  placeholder={customFormat === 'anthropic' ? 'Base URL (e.g., http://host:3000/anthropic/v1)' : 'Base URL (e.g., https://api.openai.com/v1)'}
                   value={customBaseUrl}
                   onChange={e => setCustomBaseUrl(e.target.value)}
                   style={{ marginBottom: 8 }}
