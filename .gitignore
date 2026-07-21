@@ -35,3 +35,6 @@ node_modules/
 .superpowers/
 graphify-out/
 docs/
+/.regent/config.toml
+/.regent/index.db
+/.regent/
