@@ -4,6 +4,7 @@ import { GitHubStreak } from './GitHubStreak'
 import { FocusStreak } from './FocusStreak'
 import { TabCounter } from './TabCounter'
 import { useSettings } from '../hooks/useLocalStorage'
+import { useTranslation } from '../i18n'
 
 interface HeapInfo {
   usedMB: number
@@ -54,6 +55,7 @@ function latencyColor(ms: number | null): string {
 
 export function ActivityWidget() {
   const [settings] = useSettings()
+  const { t } = useTranslation()
   const [heap, setHeap] = useState<HeapInfo | null>(null)
   const [latency, setLatency] = useState<number | null | 'pending'>('pending')
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -81,7 +83,7 @@ export function ActivityWidget() {
   const latencyDisplay = latency === 'pending'
     ? '...'
     : latency === null
-      ? 'TIMEOUT'
+      ? t('activity.timeout')
       : `${latency}ms`
 
   const pingColor = latency === 'pending' || latency === null
@@ -93,7 +95,7 @@ export function ActivityWidget() {
       <div className="activity-summary">
         {heap ? (
           <div className="stat-item heap-stat-item" title={`JS heap: ${heap.usedMB}MB used of ${heap.totalMB}MB limit`}>
-            <span className="stat-label">HEAP</span>
+            <span className="stat-label">{t('activity.heap')}</span>
             <div className="heap-bar-track">
               <div
                 className="heap-bar-fill"
@@ -107,7 +109,7 @@ export function ActivityWidget() {
         ) : null}
         <div className="stat-item">
           <Activity size={14} className="stat-icon" style={{ color: pingColor }} />
-          <span className="stat-label">PING</span>
+          <span className="stat-label">{t('activity.ping')}</span>
           <span className="stat-value" style={{ color: pingColor }}>{latencyDisplay}</span>
         </div>
         {settings.showGitHubStreak && settings.githubUsername && (

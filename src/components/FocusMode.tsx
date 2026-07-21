@@ -5,6 +5,7 @@ import { useLocalStorage } from '../hooks/useLocalStorage'
 import { useFocusSessions } from '../hooks/useFocusSessions'
 import type { FocusSession } from '../hooks/useFocusSessions'
 import { clearFocusSessionTabUsageCount, readFocusSessionTabUsageCount } from '../utils/tabUsage'
+import { useTranslation } from '../i18n'
 
 const ConsistencyIcon = ({ size = 18, className = "" }: { size?: number, className?: string }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -89,6 +90,7 @@ function normalizeDomain(input: string): string {
 
 export function FocusMode() {
   const [isActive, setIsActive] = useState(false)
+  const { t } = useTranslation()
   const [durationMin, setDurationMin] = useLocalStorage<number>('focus-duration-min', 25)
   const [customInput, setCustomInput] = useState('')
   const [showCustom, setShowCustom] = useState(false)
@@ -270,7 +272,7 @@ export function FocusMode() {
         const distractions = await readDistractionLog(pomodoroState.sessionId)
         const tabsUsed = await readFocusSessionTabUsageCount(pomodoroState.sessionId)
         const completedSession: FocusSession = {
-          task: pomodoroState.task || 'Deep work',
+          task: pomodoroState.task || t('focus.deepWork'),
           startedAt: pomodoroState.startedAt ?? Date.now() - pomodoroState.durationSec * 1000,
           completedAt: Date.now(),
           durationSec: pomodoroState.durationSec,
@@ -308,7 +310,7 @@ export function FocusMode() {
       if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
         chrome.runtime.sendMessage({ type: 'neko-focus-session-complete' }).catch(() => {})
       } else if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('Focus session complete!', { body: 'Great job. Take a break.', icon: '/favicon.svg' })
+        new Notification(t('focus.notifyTitle'), { body: t('focus.notifyBody'), icon: '/favicon.svg' })
       }
     }
   }, [timeLeft, pomodoroState.isRunning, pomodoroState.sessionId, pomodoroState.startedAt, pomodoroState.durationSec, pomodoroState.task, pomodoroState.ownerTabId, blockedSites, customSites, durationMin, addSession, completeFocusSession, syncBlockingState, readDistractionLog, clearDistractionLog, getClientTabId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -345,7 +347,7 @@ export function FocusMode() {
       isRunning: true,
       startedAt: Date.now() - ((durationMin * 60 - dur) * 1000),
       pausedTimeLeft: null,
-      task: taskInput.trim() || 'Deep work',
+      task: taskInput.trim() || t('focus.deepWork'),
       durationSec: durationMin * 60,
       sessionId,
       ownerTabId,
@@ -409,7 +411,7 @@ export function FocusMode() {
       <button
         className="focus-toggle-btn"
         onClick={toggleFocus}
-        title="Focus Mode (Ctrl+F)"
+        title={t('focus.toggleTitle')}
       >
         <Scan size={20} />
       </button>
@@ -418,19 +420,19 @@ export function FocusMode() {
         <div className="focus-overlay" onClick={() => setIsActive(false)}>
           <div className="focus-modal" onClick={e => e.stopPropagation()}>
             <div className="focus-header">
-              <h2>FOCUS MODE</h2>
+              <h2>{t('focus.heading')}</h2>
               <button onClick={() => setIsActive(false)} className="close-btn">
                 <X size={20} />
               </button>
             </div>
 
             <div className="focus-task-section">
-              <div className="task-prompt">&gt; what are you working on?</div>
+              <div className="task-prompt">{t('focus.taskPrompt')}</div>
               <input
                 ref={taskRef}
                 type="text"
                 className="focus-task-input"
-                placeholder="griding out the week, writing a report, etc."
+                placeholder={t('focus.taskPlaceholder')}
                 value={taskInput}
                 onChange={e => setTaskInput(e.target.value)}
                 disabled={pomodoroState.isRunning}
@@ -438,7 +440,7 @@ export function FocusMode() {
             </div>
 
             <div className="focus-duration-section">
-              <span className="duration-label">duration:</span>
+              <span className="duration-label">{t('focus.duration')}</span>
               <div className="duration-presets">
                 {DURATION_PRESETS.map(m => (
                   <button
@@ -473,7 +475,7 @@ export function FocusMode() {
                     onClick={() => setShowCustom(true)}
                     disabled={pomodoroState.isRunning}
                   >
-                    [custom]
+                    {t('focus.custom')}
                   </button>
                 )}
               </div>
@@ -486,15 +488,15 @@ export function FocusMode() {
             <div className="focus-controls">
               {!pomodoroState.isRunning ? (
                 <button onClick={startTimer} className="focus-btn primary">
-                  <Play size={16} /> [ ▶ Start ]
+                  <Play size={16} /> {t('focus.start')}
                 </button>
               ) : (
                 <button onClick={pauseTimer} className="focus-btn">
-                  <Pause size={16} /> [ ⏸ Pause ]
+                  <Pause size={16} /> {t('focus.pause')}
                 </button>
               )}
               <button onClick={resetTimer} className="focus-btn" disabled={!pomodoroState.isRunning && pomodoroState.pausedTimeLeft === null}>
-                <RotateCcw size={16} /> [ ↺ Reset ]
+                <RotateCcw size={16} /> {t('focus.reset')}
               </button>
             </div>
 
@@ -503,23 +505,23 @@ export function FocusMode() {
             <div className="focus-dashboard">
               <div className="dashboard-stats">
                 <div className="stat-col">
-                  <div className="stat-value">{todayBlocks} {todayBlocks === 1 ? 'block' : 'blocks'}</div>
+                  <div className="stat-value">{todayBlocks} {todayBlocks === 1 ? t('focus.block') : t('focus.blocks')}</div>
                   <div className="stat-sub">{todayFormatted}</div>
-                  <div className="stat-title">TODAY</div>
+                  <div className="stat-title">{t('focus.today')}</div>
                 </div>
                 <div className="stat-col">
-                  <div className="stat-value">🔥 {streak} days</div>
-                  <div className="stat-title">STREAK</div>
+                  <div className="stat-value">{t('focus.streakDays', { count: streak })}</div>
+                  <div className="stat-title">{t('focus.streak')}</div>
                 </div>
                 <div className="stat-col">
-                  <div className="stat-value">{bestStreak} days</div>
-                  <div className="stat-title">BEST</div>
+                  <div className="stat-value">{t('focus.bestDays', { count: bestStreak })}</div>
+                  <div className="stat-title">{t('focus.best')}</div>
                 </div>
               </div>
 
               <div className="weekly-bar-container">
                 <div className="weekly-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <ConsistencyIcon size={16} /> this week (Mon–Sun)
+                  <ConsistencyIcon size={16} /> {t('focus.thisWeek')}
                 </div>
                 <div className="gh-sparkline big">
                   {weeklyBlocks.map((count, i) => (
@@ -545,7 +547,7 @@ export function FocusMode() {
                 className="section-toggle"
                 onClick={() => setShowBlockSection(prev => !prev)}
               >
-                <span>[ {showBlockSection ? '▲' : '▼'} Block distracting sites ]</span>
+                <span>[ {showBlockSection ? '▲' : '▼'} {t('focus.blockSites')} ]</span>
               </button>
 
               {showBlockSection && (
@@ -567,7 +569,7 @@ export function FocusMode() {
                     <div className="custom-block-input">
                       <input
                         type="text"
-                        placeholder="Add custom domain (e.g. news.com)"
+                        placeholder={t('focus.customDomainPlaceholder')}
                         value={customSiteInput}
                         onChange={e => setCustomSiteInput(e.target.value)}
                         onKeyDown={e => e.key === 'Enter' && addCustomSite()}
@@ -596,9 +598,9 @@ export function FocusMode() {
             <div className="focus-divider"></div>
 
             <div className="session-log-section">
-              <h3>today's sessions</h3>
+              <h3>{t('focus.todaySessions')}</h3>
               {todaySessions.length === 0 ? (
-                <div className="empty-log">No sessions yet today.</div>
+                <div className="empty-log">{t('focus.noSessions')}</div>
               ) : (
                 <div className="session-list">
                   {todaySessions.map((session, idx) => {
@@ -624,20 +626,20 @@ export function FocusMode() {
         <div className="focus-overlay" onClick={() => setShowSummary(false)}>
           <div className="focus-summary-modal" onClick={e => e.stopPropagation()}>
             <Shield size={48} className="summary-icon" />
-            <h2>Session Complete</h2>
+            <h2>{t('focus.sessionComplete')}</h2>
             <div className="summary-details">
               <p className="summary-task">"{summaryData.task}"</p>
-              <p className="summary-time">{Math.round(summaryData.durationSec / 60)} minutes focused.</p>
+              <p className="summary-time">{t('focus.minutesFocused', { count: Math.round(summaryData.durationSec / 60) })}</p>
               <p className="summary-time">
-                {summaryData.tabsUsed} tab{summaryData.tabsUsed === 1 ? '' : 's'} opened during this block.
+                {t('focus.tabsOpened', { count: summaryData.tabsUsed, plural: summaryData.tabsUsed === 1 ? '' : 's' })}
               </p>
               <p className="summary-time">
-                {summaryData.distractions.length} distraction{summaryData.distractions.length === 1 ? '' : 's'} attempted.
+                {t('focus.distractionsAttempted', { count: summaryData.distractions.length, plural: summaryData.distractions.length === 1 ? '' : 's' })}
               </p>
             </div>
             <p className="identity-text">{identityLine}</p>
             <button className="focus-btn primary" onClick={() => setShowSummary(false)}>
-              [ Close ]
+              {t('focus.close')}
             </button>
           </div>
         </div>

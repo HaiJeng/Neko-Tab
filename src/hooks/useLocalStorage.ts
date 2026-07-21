@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { BookmarkCategory, Settings } from '../types'
 import { CAT_ASCII } from '../components/ascii'
+import { detectBrowserLanguage } from '../i18n/detect'
 
 export const STORAGE_KEYS = {
   SETTINGS: 'startpage-settings',
@@ -72,6 +73,7 @@ const DEFAULT_SETTINGS: Settings = {
   showAsciiArt: true,
   connectors: {},
   startupSitesEnabled: false,
+  language: detectBrowserLanguage(),
 }
 
 export function useLocalStorage<T>(key: string, defaultValue: T): [T, (value: T | ((prev: T) => T)) => void] {

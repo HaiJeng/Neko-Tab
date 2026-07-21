@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from '../i18n'
 
 interface Props {
   username: string
@@ -36,6 +37,7 @@ function computeStreak(days: ContribDay[]): number {
 }
 
 export function GitHubStreak({ username }: Props) {
+  const { t } = useTranslation()
   const [streak, setStreak] = useState<number | null>(null)
   const [last14, setLast14] = useState<number[]>([])
   const [error, setError] = useState(false)
@@ -75,13 +77,13 @@ export function GitHubStreak({ username }: Props) {
   if (!username) return null
   if (error) return (
     <div className="stat-item">
-      <span className="stat-label">GH</span>
-      <span className="stat-value" style={{ color: 'var(--text-secondary)', opacity: 0.5 }}>n/a</span>
+      <span className="stat-label">{t('github.label')}</span>
+      <span className="stat-value" style={{ color: 'var(--text-secondary)', opacity: 0.5 }}>{t('github.na')}</span>
     </div>
   )
   if (streak === null) return (
     <div className="stat-item">
-      <span className="stat-label">GH STREAK</span>
+      <span className="stat-label">{t('github.streakLabel')}</span>
       <span className="stat-value">...</span>
     </div>
   )
@@ -90,14 +92,14 @@ export function GitHubStreak({ username }: Props) {
 
   return (
     <div className="stat-item gh-streak-item">
-      <span className="stat-label">GH STREAK</span>
+      <span className="stat-label">{t('github.streakLabel')}</span>
       <div className="gh-sparkline">
         {last14.map((count, i) => (
           <div
             key={i}
             className="gh-spark-bar"
             style={{ height: `${Math.max(2, Math.round((count / maxCount) * 14))}px` }}
-            title={`${count} contributions`}
+            title={t('github.contributions', { count })}
           />
         ))}
       </div>

@@ -14,6 +14,7 @@ import { DailyGoal } from "./components/DailyGoal";
 import { CommandPalette } from "./components/CommandPalette";
 import { ChromeTabButton } from './components/ChromeTabButton'
 import { StartupLauncher } from './components/StartupLauncher'
+import { LanguageProvider, useTranslation } from './i18n'
 
 // Lazy load overlay components to improve initial mount time
 const SettingsPanel = lazy(() =>
@@ -70,10 +71,11 @@ function CustomBackground({ settings, bgImage }: CustomBackgroundProps) {
   );
 }
 
-function App() {
+function AppInner() {
   const [settings, setSettings] = useSettings();
   const [bgImage] = useLocalStorage<string>("neko-bg-image", "");
   const [toast, setToast] = useState<string | null>(null);
+  const { t } = useTranslation();
   const {
     categories,
     addCategory,
@@ -105,13 +107,13 @@ function App() {
   useEffect(() => {
     const listener = (msg: any) => {
       if (msg?.type === 'neko-startup-sites-opened') {
-        setToast(`Opened ${msg.count} startup site${msg.count !== 1 ? 's' : ''}`)
+        setToast(t('app.startupToast', { count: msg.count, plural: msg.count !== 1 ? 's' : '' }))
         setTimeout(() => setToast(null), 2000)
       }
     }
     chrome.runtime?.onMessage?.addListener(listener)
     return () => chrome.runtime?.onMessage?.removeListener(listener)
-  }, [])
+  }, [t])
 
   return (
     <>
@@ -194,6 +196,14 @@ function App() {
         </div>
       )}
     </>
+  );
+}
+
+function App() {
+  return (
+    <LanguageProvider>
+      <AppInner />
+    </LanguageProvider>
   );
 }
 

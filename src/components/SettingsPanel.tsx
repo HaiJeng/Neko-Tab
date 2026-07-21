@@ -7,6 +7,8 @@ import { useLocalStorage } from '../hooks/useLocalStorage'
 import { getConnectorsWithSettings, updateConnectorConfig } from '../connectors/registry'
 import { AIProviders } from './Settings/AIProviders'
 import { AIMemorySettings } from './Settings/AIMemory'
+import { useTranslation, SUPPORTED_LANGUAGES } from '../i18n'
+import type { SupportedLanguage } from '../i18n'
 
 const THEMES: ThemeInfo[] = [
   // Simple Color Themes
@@ -62,6 +64,7 @@ interface SettingsPanelProps {
 type TabType = 'appearance' | 'ascii' | 'preferences' | 'widgets' | 'ai' | 'aliases' | 'startup' | 'integrations' | 'backup' | 'advanced' | 'support';
 
 export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: SettingsPanelProps) {
+  const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<TabType>('appearance')
   const [localSettings, setLocalSettings] = useState<SettingsType>(settings)
@@ -147,7 +150,7 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
 
   const handleResetData = () => {
     const confirmed = window.confirm(
-      'Are you sure you want to reset ALL data? This will delete your bookmarks, notes, and settings. This cannot be undone.'
+      t('settings.advanced.resetConfirm')
     )
 
     if (!confirmed) return
@@ -186,10 +189,10 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
 
   return (
     <>
-      <button 
+      <button
         className='settings-toggle'
         onClick={() => setIsOpen(true)}
-        title='Settings'
+        title={t('settings.button')}
       >
         <Settings size={20} />
       </button>
@@ -204,74 +207,74 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
             <div className='saas-sidebar'>
               <div className='saas-sidebar-header'>
                 <Settings size={18} />
-                <span>Settings</span>
+                <span>{t('settings.button')}</span>
               </div>
               <nav className='saas-nav'>
-                <button 
+                <button
                   className={`saas-nav-item ${activeTab === 'appearance' ? 'active' : ''}`}
                   onClick={() => setActiveTab('appearance')}
                 >
-                  <Palette size={16} /> Appearance
+                  <Palette size={16} /> {t('settings.nav.appearance')}
                 </button>
-                <button 
+                <button
                   className={`saas-nav-item ${activeTab === 'ascii' ? 'active' : ''}`}
                   onClick={() => setActiveTab('ascii')}
                 >
-                  <Terminal size={16} /> ASCII Art
+                  <Terminal size={16} /> {t('settings.nav.ascii')}
                 </button>
-                <button 
+                <button
                   className={`saas-nav-item ${activeTab === 'preferences' ? 'active' : ''}`}
                   onClick={() => setActiveTab('preferences')}
                 >
-                  <Monitor size={16} /> Preferences
+                  <Monitor size={16} /> {t('settings.nav.preferences')}
                 </button>
-                <button 
+                <button
                   className={`saas-nav-item ${activeTab === 'widgets' ? 'active' : ''}`}
                   onClick={() => setActiveTab('widgets')}
                 >
-                  <LayoutGrid size={16} /> Widgets
+                  <LayoutGrid size={16} /> {t('settings.nav.widgets')}
                 </button>
                 <button
                   className={`saas-nav-item ${activeTab === 'ai' ? 'active' : ''}`}
                   onClick={() => setActiveTab('ai')}
                 >
-                  <Key size={16} /> AI
+                  <Key size={16} /> {t('settings.nav.ai')}
                 </button>
                 <button
                   className={`saas-nav-item ${activeTab === 'aliases' ? 'active' : ''}`}
                   onClick={() => setActiveTab('aliases')}
                 >
-                  <Hash size={16} /> Aliases
+                  <Hash size={16} /> {t('settings.nav.aliases')}
                 </button>
                 <button
                   className={`saas-nav-item ${activeTab === 'startup' ? 'active' : ''}`}
                   onClick={() => setActiveTab('startup')}
                 >
-                  <ExternalLink size={16} /> Startup Sites
+                  <ExternalLink size={16} /> {t('settings.nav.startup')}
                 </button>
                 <button
                   className={`saas-nav-item ${activeTab === 'integrations' ? 'active' : ''}`}
                   onClick={() => setActiveTab('integrations')}
                 >
-                  <Plug size={16} /> Integrations
+                  <Plug size={16} /> {t('settings.nav.integrations')}
                 </button>
                 <button
                   className={`saas-nav-item ${activeTab === 'backup' ? 'active' : ''}`}
                   onClick={() => setActiveTab('backup')}
                 >
-                  <Download size={16} /> Export/Import
+                  <Download size={16} /> {t('settings.nav.backup')}
                 </button>
                 <button
                   className={`saas-nav-item ${activeTab === 'advanced' ? 'active' : ''}`}
                   onClick={() => setActiveTab('advanced')}
                 >
-                  <Cpu size={16} /> Advanced
+                  <Cpu size={16} /> {t('settings.nav.advanced')}
                 </button>
                 <button
                   className={`saas-nav-item ${activeTab === 'support' ? 'active' : ''}`}
                   onClick={() => setActiveTab('support')}
                 >
-                  <Heart size={16} /> Support
+                  <Heart size={16} /> {t('settings.nav.support')}
                 </button>
               </nav>
             </div>
@@ -280,17 +283,17 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
             <div className='saas-main'>
               <div className='saas-main-header'>
                 <h3 className='saas-title'>
-                  {activeTab === 'appearance' && 'Theme & Appearance'}
-                  {activeTab === 'ascii' && 'Custom ASCII Art'}
-                  {activeTab === 'preferences' && 'System Preferences'}
-                  {activeTab === 'widgets' && 'Widgets & Background'}
-                  {activeTab === 'ai' && 'AI & Command Interpreter'}
-                  {activeTab === 'aliases' && 'URL Aliases'}
-                  {activeTab === 'startup' && 'Startup Sites'}
-                  {activeTab === 'integrations' && 'Integrations'}
-                  {activeTab === 'backup' && 'Backup & Restore'}
-                  {activeTab === 'advanced' && 'Advanced Settings'}
-                  {activeTab === 'support' && '☕ Support Neko-Tab'}
+                  {activeTab === 'appearance' && t('settings.title.appearance')}
+                  {activeTab === 'ascii' && t('settings.title.ascii')}
+                  {activeTab === 'preferences' && t('settings.title.preferences')}
+                  {activeTab === 'widgets' && t('settings.title.widgets')}
+                  {activeTab === 'ai' && t('settings.title.ai')}
+                  {activeTab === 'aliases' && t('settings.title.aliases')}
+                  {activeTab === 'startup' && t('settings.title.startup')}
+                  {activeTab === 'integrations' && t('settings.title.integrations')}
+                  {activeTab === 'backup' && t('settings.title.backup')}
+                  {activeTab === 'advanced' && t('settings.title.advanced')}
+                  {activeTab === 'support' && t('settings.title.support')}
                 </h3>
               </div>
 
@@ -299,8 +302,7 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
                 {activeTab === 'appearance' && (
                   <div className='saas-section'>
                     <div className='saas-section-group'>
-                      <label className='saas-section-label'>COLOR THEMES</label>
-                      <div className='saas-theme-grid'>
+                      <label className='saas-section-label'>{t('settings.appearance.colorThemes')}</label>                      <div className='saas-theme-grid'>
                         {THEMES.filter(t => t.category === 'color').map(theme => (
                           <div 
                             key={theme.id}
@@ -332,7 +334,7 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
                     </div>
 
                     <div className='saas-section-group'>
-                      <label className='saas-section-label'>ANIMATED THEMES</label>
+                      <label className='saas-section-label'>{t('settings.appearance.animatedThemes')}</label>
                       <div className='saas-theme-grid'>
                         {THEMES.filter(t => t.category === 'animated').map(theme => (
                           <div 
@@ -365,7 +367,7 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
                     </div>
 
                     <div className='saas-section-group'>
-                      <label className='saas-section-label'>SPECIAL EFFECTS</label>
+                      <label className='saas-section-label'>{t('settings.appearance.specialEffects')}</label>
                       <div className='saas-theme-grid'>
                         {THEMES.filter(t => t.category === 'special').map(theme => (
                           <div 
@@ -398,7 +400,7 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
                     </div>
 
                     <div className='saas-section-group'>
-                      <label className='saas-section-label'>FONT FAMILY</label>
+                      <label className='saas-section-label'>{t('settings.appearance.fontFamily')}</label>
                       <div className='saas-theme-grid'>
                         {(() => {
                           const currentTheme = THEMES.find(t => t.id === localSettings.theme) || THEMES[0];
@@ -439,6 +441,21 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
                         })()}
                       </div>
                     </div>
+
+                    <div className='saas-section-group'>
+                      <label className='saas-section-label'>{t('settings.appearance.language')}</label>
+                      <div className='saas-theme-grid'>
+                        {SUPPORTED_LANGUAGES.map(lang => (
+                          <div
+                            key={lang.code}
+                            className={`saas-theme-card ${localSettings.language === lang.code ? 'active' : ''}`}
+                            onClick={() => handleChange('language', lang.code as SupportedLanguage)}
+                          >
+                            <span className='theme-name'>{lang.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -446,53 +463,53 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
                 {activeTab === 'preferences' && (
                   <div className='saas-section'>
                     <div className='saas-card'>
-                      <label className='saas-label'>User Identifier</label>
+                      <label className='saas-label'>{t('settings.pref.userIdentifier')}</label>
                       <input
                         id='userName'
                         type='text'
                         value={localSettings.userName}
                         onChange={e => handleChange('userName', e.target.value)}
                         className='saas-input'
-                        placeholder='Enter your display name'
+                        placeholder={t('settings.pref.userIdentifierPlaceholder')}
                       />
                     </div>
 
                     <div className='saas-card'>
-                      <label className='saas-label'>Display Options</label>
+                      <label className='saas-label'>{t('settings.pref.displayOptions')}</label>
                       <div className='saas-toggle-list'>
-                        {renderToggle('Show Status Bar', localSettings.showStatusBar, val => handleChange('showStatusBar', val))}
-                        {localSettings.showStatusBar && renderToggle('Show Tab Counter', localSettings.showTabCounter ?? true, val => handleChange('showTabCounter', val))}
-                        {renderToggle('Show Greeting', localSettings.showGreeting, val => handleChange('showGreeting', val))}
-                        {renderToggle('Show Clock', localSettings.showClock, val => handleChange('showClock', val))}
+                        {renderToggle(t('settings.pref.showStatusBar'), localSettings.showStatusBar, val => handleChange('showStatusBar', val))}
+                        {localSettings.showStatusBar && renderToggle(t('settings.pref.showTabCounter'), localSettings.showTabCounter ?? true, val => handleChange('showTabCounter', val))}
+                        {renderToggle(t('settings.pref.showGreeting'), localSettings.showGreeting, val => handleChange('showGreeting', val))}
+                        {renderToggle(t('settings.pref.showClock'), localSettings.showClock, val => handleChange('showClock', val))}
                       </div>
                     </div>
 
                     <div className='saas-card'>
-                      <label className='saas-label'>Clock Format</label>
+                      <label className='saas-label'>{t('settings.pref.clockFormat')}</label>
                       <div className='saas-segmented-control'>
-                        <button 
+                        <button
                           className={`saas-segment ${localSettings.clockFormat === '12h' ? 'active' : ''}`}
                           onClick={() => handleChange('clockFormat', '12h')}
                         >
-                          12-Hour
+                          {t('settings.pref.clock12h')}
                         </button>
-                        <button 
+                        <button
                           className={`saas-segment ${localSettings.clockFormat === '24h' ? 'active' : ''}`}
                           onClick={() => handleChange('clockFormat', '24h')}
                         >
-                          24-Hour
+                          {t('settings.pref.clock24h')}
                         </button>
                       </div>
                     </div>
 
                     <div className='saas-card'>
-                      <label className='saas-label'>Add New Category</label>
+                      <label className='saas-label'>{t('settings.pref.addCategory')}</label>
                       <div className='saas-flex-row'>
                         <input
                           type='text'
                           value={newCategoryName}
                           onChange={e => setNewCategoryName(e.target.value)}
-                          placeholder='e.g., Development'
+                          placeholder={t('settings.pref.addCategoryPlaceholder')}
                           className='saas-input'
                         />
                         <button className='saas-btn-icon' onClick={handleAddCategory}>
@@ -508,65 +525,65 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
                   <div className='saas-section'>
                     <div className='saas-card'>
                       <div className='saas-toggle-list'>
-                        {renderToggle('Show ASCII Art', localSettings.showAsciiArt ?? true, val => handleChange('showAsciiArt', val))}
+                        {renderToggle(t('settings.ascii.show'), localSettings.showAsciiArt ?? true, val => handleChange('showAsciiArt', val))}
                       </div>
                     </div>
                     <div className='saas-card'>
-                      <label className='saas-label'>ASCII Art Source</label>
+                      <label className='saas-label'>{t('settings.ascii.source')}</label>
                       <div className='saas-segmented-control'>
-                        <button 
+                        <button
                           className={`saas-segment ${localSettings.asciiArtSource === 'os' ? 'active' : ''}`}
                           onClick={() => handleChange('asciiArtSource', 'os')}
                         >
-                          System OS
+                          {t('settings.ascii.sourceOs')}
                         </button>
-                        <button 
+                        <button
                           className={`saas-segment ${localSettings.asciiArtSource === 'cat' ? 'active' : ''}`}
                           onClick={() => handleChange('asciiArtSource', 'cat')}
                         >
-                          Neko Cat
+                          {t('settings.ascii.sourceCat')}
                         </button>
-                        <button 
+                        <button
                           className={`saas-segment ${localSettings.asciiArtSource === 'custom' ? 'active' : ''}`}
                           onClick={() => handleChange('asciiArtSource', 'custom')}
                         >
-                          Custom
+                          {t('settings.ascii.sourceCustom')}
                         </button>
                       </div>
                     </div>
 
                     {localSettings.asciiArtSource === 'os' && (
                       <div className='saas-card'>
-                        <p className='saas-hint'>System OS ASCII art is selected (automatically matches your operating system).</p>
+                        <p className='saas-hint'>{t('settings.ascii.osHint')}</p>
                       </div>
                     )}
 
                     {localSettings.asciiArtSource === 'custom' && (
                       <>
                         <div className='saas-card'>
-                          <label className='saas-label'>Image to ASCII Converter</label>
+                          <label className='saas-label'>{t('settings.ascii.converter')}</label>
                           <label className='saas-upload-area'>
                             <Upload size={24} className="saas-upload-icon" />
-                            <span className="saas-upload-text">Click to upload image</span>
-                            <input 
-                              type='file' 
-                              accept='image/*' 
+                            <span className="saas-upload-text">{t('settings.ascii.uploadImage')}</span>
+                            <input
+                              type='file'
+                              accept='image/*'
                               onChange={handleImageUpload}
                               className='saas-hidden-file'
                             />
                           </label>
                           <div className='saas-upload-options'>
-                            {renderToggle('Invert Colors', isInverted, setIsInverted)}
+                            {renderToggle(t('settings.ascii.invertColors'), isInverted, setIsInverted)}
                           </div>
                         </div>
 
                         <div className='saas-card'>
-                          <label className='saas-label'>Custom ASCII Input</label>
+                          <label className='saas-label'>{t('settings.ascii.customInput')}</label>
                           <textarea
                             className='saas-textarea'
                             value={localSettings.customAsciiArt ?? localSettings.asciiArt ?? ''}
                             onChange={e => handleChange('customAsciiArt', e.target.value)}
-                            placeholder="Paste your custom ASCII art here..."
+                            placeholder={t('settings.ascii.customPlaceholder')}
                             spellCheck={false}
                             rows={10}
                           />
@@ -576,7 +593,7 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
 
                     {localSettings.asciiArtSource === 'cat' && (
                       <div className='saas-card'>
-                        <p className='saas-hint'>The classic Neko Cat ASCII art is selected.</p>
+                        <p className='saas-hint'>{t('settings.ascii.catHint')}</p>
                       </div>
                     )}
                   </div>
@@ -586,11 +603,11 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
                 {activeTab === 'widgets' && (
                   <div className='saas-section'>
                     <div className='saas-card'>
-                      <label className='saas-label'>Custom Background</label>
+                      <label className='saas-label'>{t('settings.widgets.customBackground')}</label>
                       <label className='saas-upload-area'>
                         <Upload size={24} className="saas-upload-icon" />
                         <span className="saas-upload-text">
-                          {bgImage ? 'Click to change background' : 'Click to upload background image'}
+                          {bgImage ? t('settings.widgets.changeBackground') : t('settings.widgets.uploadBackground')}
                         </span>
                         <input
                           type='file' accept='image/*' className='saas-hidden-file'
@@ -605,19 +622,19 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
                       </label>
                       {bgImage && (
                         <button className='saas-btn-secondary' style={{ marginTop: 8, fontSize: 12 }} onClick={() => setBgImage('')}>
-                          Remove background
+                          {t('settings.widgets.removeBackground')}
                         </button>
                       )}
                       <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
                         <div>
-                          <label className='saas-label' style={{ marginBottom: 6 }}>Dim overlay — {localSettings.bgDim ?? 40}%</label>
+                          <label className='saas-label' style={{ marginBottom: 6 }}>{t('settings.widgets.dimOverlay')} — {localSettings.bgDim ?? 40}%</label>
                           <input type='range' min={0} max={90} step={5}
                             value={localSettings.bgDim ?? 40}
                             onChange={e => handleChange('bgDim', Number(e.target.value))}
                             className='saas-range' />
                         </div>
                         <div>
-                          <label className='saas-label' style={{ marginBottom: 6 }}>Background blur — {localSettings.bgBlur ?? 0}px</label>
+                          <label className='saas-label' style={{ marginBottom: 6 }}>{t('settings.widgets.backgroundBlur')} — {localSettings.bgBlur ?? 0}px</label>
                           <input type='range' min={0} max={10} step={1}
                             value={localSettings.bgBlur ?? 0}
                             onChange={e => handleChange('bgBlur', Number(e.target.value))}
@@ -627,23 +644,23 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
                     </div>
 
                     <div className='saas-card'>
-                      <label className='saas-label'>Daily Goal</label>
+                      <label className='saas-label'>{t('settings.widgets.dailyGoal')}</label>
                       <div className='saas-toggle-list'>
-                        {renderToggle('Show daily goal', localSettings.showDailyGoal ?? true, val => handleChange('showDailyGoal', val))}
+                        {renderToggle(t('settings.widgets.showDailyGoal'), localSettings.showDailyGoal ?? true, val => handleChange('showDailyGoal', val))}
                       </div>
-                      <p className='saas-hint'>A single focus line below the clock. Resets at midnight.</p>
+                      <p className='saas-hint'>{t('settings.widgets.dailyGoalHint')}</p>
                     </div>
 
                     <div className='saas-card'>
-                      <label className='saas-label'>GitHub Streak</label>
+                      <label className='saas-label'>{t('settings.widgets.githubStreak')}</label>
                       <div className='saas-toggle-list'>
-                        {renderToggle('Show in status bar', localSettings.showGitHubStreak ?? false, val => handleChange('showGitHubStreak', val))}
+                        {renderToggle(t('settings.widgets.showInStatusBar'), localSettings.showGitHubStreak ?? false, val => handleChange('showGitHubStreak', val))}
                       </div>
                       <input type='text'
                         value={localSettings.githubUsername ?? ''}
                         onChange={e => handleChange('githubUsername', e.target.value)}
-                        placeholder='GitHub username' className='saas-input' style={{ marginTop: 12 }} />
-                      <p className='saas-hint'>Uses the public contributions API. No auth needed.</p>
+                        placeholder={t('settings.widgets.githubUsernamePlaceholder')} className='saas-input' style={{ marginTop: 12 }} />
+                      <p className='saas-hint'>{t('settings.widgets.githubHint')}</p>
                     </div>
                   </div>
                 )}
@@ -651,14 +668,14 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
                 {activeTab === 'aliases' && (
                   <div className='saas-section'>
                     <div className='saas-card'>
-                      <label className='saas-label'>Add Alias</label>
+                      <label className='saas-label'>{t('settings.aliases.add')}</label>
                       <div className='saas-flex-row' style={{ gap: 8 }}>
                         <input type='text' className='saas-input alias-key-input'
                           value={aliasKey} onChange={e => setAliasKey(e.target.value.toLowerCase().replace(/\s/g, ''))}
-                          placeholder='key  e.g. gh' maxLength={20} />
+                          placeholder={t('settings.aliases.keyPlaceholder')} maxLength={20} />
                         <input type='text' className='saas-input'
                           value={aliasUrl} onChange={e => setAliasUrl(e.target.value)}
-                          placeholder='url  e.g. https://github.com/raj'
+                          placeholder={t('settings.aliases.urlPlaceholder')}
                           onKeyDown={e => {
                             if (e.key === 'Enter' && aliasKey && aliasUrl) {
                               setAliases(prev => [...prev.filter(a => a.key !== aliasKey), { key: aliasKey, url: aliasUrl }])
@@ -671,11 +688,11 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
                           setAliasKey(''); setAliasUrl('')
                         }}><Plus size={18} /></button>
                       </div>
-                      <p className='saas-hint'>Type the key in the search bar (Ctrl+K) to jump instantly. Also works as a shell alias in the search bar.</p>
+                      <p className='saas-hint'>{t('settings.aliases.hint')}</p>
                     </div>
                     {aliases.length > 0 && (
                       <div className='saas-card'>
-                        <label className='saas-label'>Saved Aliases</label>
+                        <label className='saas-label'>{t('settings.aliases.saved')}</label>
                         <div className='alias-list'>
                           {aliases.map(a => (
                             <div key={a.key} className='alias-row'>
@@ -698,12 +715,12 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
                   <div className='saas-section'>
                     <div className='saas-card'>
                       <div className='saas-toggle-list'>
-                        {renderToggle('Enable startup sites', startupEnabled, v => setStartupEnabled(v))}
+                        {renderToggle(t('settings.startup.enable'), startupEnabled, v => setStartupEnabled(v))}
                       </div>
-                      <p className='saas-hint'>When enabled, a prompt appears on your first new tab each day. Press <kbd style={{ fontFamily: 'inherit', fontSize: '0.85em', background: 'rgba(255,255,255,0.1)', padding: '1px 4px', borderRadius: 3 }}>Alt+Shift+S</kbd> at any time to open the stack instantly.</p>
+                      <p className='saas-hint'>{t('settings.startup.hintPrefix')} <kbd style={{ fontFamily: 'inherit', fontSize: '0.85em', background: 'rgba(255,255,255,0.1)', padding: '1px 4px', borderRadius: 3 }}>Alt+Shift+S</kbd> {t('settings.startup.hintSuffix')}</p>
                     </div>
                     <div className='saas-card'>
-                      <label className='saas-label'>Add Site URL</label>
+                      <label className='saas-label'>{t('settings.startup.addUrl')}</label>
                       <div className='saas-flex-row' style={{ gap: 8 }}>
                         <input
                           type='text'
@@ -719,23 +736,23 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
                         <button
                           className='saas-btn-icon'
                           onClick={() => addStartupSite(newSiteUrl)}
-                          title={startupSites.length >= 10 ? 'Limit reached (10 sites max)' : 'Add site'}
+                          title={startupSites.length >= 10 ? t('settings.startup.limitReached') : t('settings.startup.addSite')}
                         >
                           <Plus size={18} />
                         </button>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
-                        <p className='saas-hint' style={{ margin: 0 }}>{startupSites.length}/10 sites</p>
+                        <p className='saas-hint' style={{ margin: 0 }}>{t('settings.startup.sitesCount', { count: startupSites.length })}</p>
                         {siteError && (
                           <span style={{ color: siteError === 'invalid' ? '#ef4444' : '#f59e0b', fontSize: 12 }}>
-                            {siteError === 'invalid' ? 'Invalid URL format' : 'Limit reached (10 sites max)'}
+                            {siteError === 'invalid' ? t('settings.startup.invalidUrl') : t('settings.startup.limitReached')}
                           </span>
                         )}
                       </div>
                     </div>
                     {startupSites.length > 0 && (
                       <div className='saas-card'>
-                        <label className='saas-label'>Sites</label>
+                        <label className='saas-label'>{t('settings.startup.sites')}</label>
                         <div className='alias-list'>
                           {startupSites.map((site: StartupSite, i: number) => (
                             <div key={i} className='alias-row'>
@@ -770,29 +787,29 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
                 {activeTab === 'backup' && (
                   <div className='saas-section'>
                     <div className='saas-card'>
-                      <label className='saas-label'>Export Settings</label>
+                      <label className='saas-label'>{t('settings.backup.export')}</label>
                       <p className='saas-hint' style={{ marginBottom: 12 }}>
-                        Download all your settings, bookmarks, and local data as a JSON file.
+                        {t('settings.backup.exportHint')}
                       </p>
                       <button className='saas-btn-primary' onClick={() => import('../utils/backup').then(m => m.exportSettings())} style={{ width: '100%' }}>
-                        <Download size={16} /> Export to JSON
+                        <Download size={16} /> {t('settings.backup.exportBtn')}
                       </button>
                     </div>
 
                     <div className='saas-card'>
-                      <label className='saas-label'>Import Settings</label>
+                      <label className='saas-label'>{t('settings.backup.import')}</label>
                       <p className='saas-hint' style={{ marginBottom: 12 }}>
-                        Upload a previously exported JSON file to restore your settings. 
+                        {t('settings.backup.importHint')}
                         <span style={{ color: '#ff4444', display: 'block', marginTop: 4 }}>
-                          Warning: This will overwrite all your current data!
+                          {t('settings.backup.importWarning')}
                         </span>
                       </p>
                       <label className='saas-upload-area'>
                         <Upload size={24} className="saas-upload-icon" />
-                        <span className="saas-upload-text">Click to upload backup file</span>
-                        <input 
-                          type='file' 
-                          accept='.json' 
+                        <span className="saas-upload-text">{t('settings.backup.uploadBackup')}</span>
+                        <input
+                          type='file'
+                          accept='.json'
                           onChange={(e) => {
                             const file = e.target.files?.[0]
                             if (!file) return
@@ -803,7 +820,7 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
                               if (importSettings(content)) {
                                 // Success - page will reload
                               } else {
-                                alert('Failed to import settings. Please make sure the file is a valid Neko-Tab backup.')
+                                alert(t('settings.backup.importFailed'))
                               }
                             }
                             reader.readAsText(file)
@@ -828,22 +845,22 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
                 {activeTab === 'advanced' && (
                   <div className='saas-section'>
                     <div className='saas-card'>
-                      <label className='saas-label'>Home Page Settings</label>
+                      <label className='saas-label'>{t('settings.advanced.homePage')}</label>
                       <div className='saas-toggle-list'>
-                        {renderToggle('Show "Open Chrome Tab" button.', localSettings.showChromeTab ?? true, val => handleChange('showChromeTab', val))}
+                        {renderToggle(t('settings.advanced.showChromeTab'), localSettings.showChromeTab ?? true, val => handleChange('showChromeTab', val))}
                       </div>
-                      <p className='saas-hint'>Keyboard shortcut "c" will always open a new Chrome tab regardless of this setting.
+                      <p className='saas-hint'>{t('settings.advanced.chromeTabHint')}
                       </p>
                     </div>                    <div className='saas-card' style={{ borderColor: 'rgba(239, 68, 68, 0.2)' }}>
                       <label
                         className='saas-label'
                         style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: 8 }}
                       >
-                        <AlertTriangle size={16} /> Danger Zone
+                        <AlertTriangle size={16} /> {t('settings.advanced.dangerZone')}
                       </label>
 
                       <p className='saas-hint' style={{ marginBottom: 12 }}>
-                        Resetting will permanently delete all your settings, bookmarks, aliases, and notes. This action cannot be undone.
+                        {t('settings.advanced.dangerHint')}
                       </p>
 
                       <button
@@ -851,7 +868,7 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
                         onClick={handleResetData}
                         style={{ width: '100%', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.3)' }}
                       >
-                        <Trash2 size={14} style={{ marginRight: 8 }} /> Reset All Data & Settings
+                        <Trash2 size={14} style={{ marginRight: 8 }} /> {t('settings.advanced.resetBtn')}
                       </button>
                     </div>
                   </div>
@@ -861,9 +878,9 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
                 {activeTab === 'support' && (
                   <div className='saas-section'>
                     <div className='saas-card' style={{ textAlign: 'center', alignItems: 'center' }}>
-                      <label className='saas-label'>Support Neko-Tab</label>
+                      <label className='saas-label'>{t('settings.support.title')}</label>
                       <p className='saas-hint' style={{ textAlign: 'center', maxWidth: 400, lineHeight: 1.6 }}>
-                        Neko-Tab is free and open source. If it saves you time, a small contribution helps keep it going.
+                        {t('settings.support.hint')}
                       </p>
                       <a
                         href="https://ko-fi.com/uddinrajaul"
@@ -872,7 +889,7 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
                         className="saas-btn-primary"
                         style={{ textDecoration: 'none', width: '100%', justifyContent: 'center', marginTop: 8 }}
                       >
-                        ☕ Buy me a coffee
+                        {t('settings.support.coffee')}
                       </a>
                     </div>
                   </div>
@@ -880,11 +897,11 @@ export function SettingsPanel({ settings, onSettingsChange, onAddCategory }: Set
               </div>
               <div className='saas-footer'>
                 <button className='saas-btn-secondary' onClick={() => setIsOpen(false)}>
-                  Cancel
+                  {t('settings.footer.cancel')}
                 </button>
                 <button className='saas-btn-primary' onClick={handleSave}>
                   <Save size={16} />
-                  Save Changes
+                  {t('settings.footer.save')}
                 </button>
               </div>
             </div>

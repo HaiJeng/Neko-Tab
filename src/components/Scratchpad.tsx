@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { NotebookPen, X, List, BookOpen } from 'lucide-react'
 import { useLocalStorage } from '../hooks/useLocalStorage'
+import { useTranslation } from '../i18n'
 
 interface CheckItem { id: string; text: string; done: boolean }
 type Mode = 'notes' | 'checklist' | 'journal'
@@ -13,14 +14,15 @@ function todayKey(): string {
   return new Date().toISOString().slice(0, 10) // YYYY-MM-DD
 }
 
-function formatJournalDate(key: string): string {
-  return new Date(key + 'T00:00:00').toLocaleDateString(undefined, {
+function formatJournalDate(key: string, locale: string): string {
+  return new Date(key + 'T00:00:00').toLocaleDateString(locale, {
     weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
   })
 }
 
 export function Scratchpad() {
   const [isOpen, setIsOpen] = useState(false)
+  const { t, locale } = useTranslation()
   const [mode, setMode] = useState<Mode>('notes')
   const [text, setText] = useLocalStorage<string>('neko-scratchpad', '')
   const [items, setItems] = useLocalStorage<CheckItem[]>('neko-checklist', [newItem()])
@@ -91,7 +93,7 @@ export function Scratchpad() {
 
   return (
     <>
-      <button className="scratchpad-toggle" onClick={() => setIsOpen(o => !o)} title="Scratchpad (Ctrl+`)">
+      <button className="scratchpad-toggle" onClick={() => setIsOpen(o => !o)} title={t('scratchpad.title')}>
         <NotebookPen size={20} />
       </button>
 
@@ -101,13 +103,13 @@ export function Scratchpad() {
             <div className="scratchpad-header">
               <div className="scratchpad-tabs">
                 <button className={`sp-tab ${mode === 'notes' ? 'active' : ''}`} onClick={() => setMode('notes')}>
-                  <NotebookPen size={12} /> notes
+                  <NotebookPen size={12} /> {t('scratchpad.tabNotes')}
                 </button>
                 <button className={`sp-tab ${mode === 'checklist' ? 'active' : ''}`} onClick={() => setMode('checklist')}>
-                  <List size={12} /> checklist
+                  <List size={12} /> {t('scratchpad.tabChecklist')}
                 </button>
                 <button className={`sp-tab ${mode === 'journal' ? 'active' : ''}`} onClick={() => setMode('journal')}>
-                  <BookOpen size={12} /> journal
+                  <BookOpen size={12} /> {t('scratchpad.tabJournal')}
                 </button>
               </div>
               <div className="scratchpad-meta">
@@ -121,7 +123,7 @@ export function Scratchpad() {
             {mode === 'notes' && (
               <textarea ref={textareaRef} className="scratchpad-textarea" value={text}
                 onChange={e => setText(e.target.value)}
-                placeholder="// notes, thoughts, snippets..." spellCheck={false} />
+                placeholder={t('scratchpad.notesPlaceholder')} spellCheck={false} />
             )}
 
             {mode === 'checklist' && (
@@ -136,7 +138,7 @@ export function Scratchpad() {
                       className="sp-item-input" value={item.text}
                       onChange={e => updateItem(item.id, e.target.value)}
                       onKeyDown={e => handleItemKeyDown(e, item.id, idx)}
-                      placeholder={idx === 0 && items.length === 1 ? 'add a task...' : ''}
+                      placeholder={idx === 0 && items.length === 1 ? t('scratchpad.addTask') : ''}
                       spellCheck={false} />
                   </div>
                 ))}
@@ -144,7 +146,7 @@ export function Scratchpad() {
                   const fresh = newItem()
                   setItems(prev => [...prev, fresh])
                   setTimeout(() => itemRefs.current.get(fresh.id)?.focus(), 20)
-                }}>+ add item</button>
+                }}>{t('scratchpad.addItem')}</button>
               </div>
             )}
 
@@ -155,18 +157,18 @@ export function Scratchpad() {
                     {[todayKey(), ...journalDays.filter(d => d !== todayKey())].map(d => (
                       <button key={d} className={`sp-day-btn ${d === journalDay ? 'active' : ''}`}
                         onClick={() => setJournalDay(d)}>
-                        {d === todayKey() ? 'today' : d}
+                        {d === todayKey() ? t('scratchpad.today') : d}
                       </button>
                     ))}
                   </div>
                 </div>
-                <div className="sp-journal-date">{formatJournalDate(journalDay)}</div>
+                <div className="sp-journal-date">{formatJournalDate(journalDay, locale)}</div>
                 <textarea
                   ref={journalRef}
                   className="scratchpad-textarea"
                   value={journalText}
                   onChange={e => setJournal(prev => ({ ...prev, [journalDay]: e.target.value }))}
-                  placeholder={`// what did you work on today?`}
+                  placeholder={t('scratchpad.journalPlaceholder')}
                   spellCheck={false}
                 />
               </div>

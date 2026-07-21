@@ -1,5 +1,5 @@
 /* ==================== ALIASES ==================== */
-.alias-key-input { max-width: 100px; flex-shrink: 0; }
+.alias-key-input { max-width: 140px; flex-shrink: 0; }
 
 .alias-list {
   display: flex;

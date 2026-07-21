@@ -2,6 +2,9 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css'
+import { setActiveLanguage } from './i18n/translate'
+import { detectBrowserLanguage } from './i18n/detect'
+import { isSupportedLanguage } from './i18n/types'
 
 // Type for our pre-warmed state
 declare global {
@@ -44,7 +47,11 @@ declare global {
     const font = ALLOWED_FONTS.includes(settings.font) ? settings.font : 'JetBrains Mono';
     const fontValue = font.includes(' ') ? `'${font}'` : font;
     document.documentElement.style.setProperty('--font-mono', fontValue);
-    
+
+    // Apply language before React mounts to avoid a flash of untranslated content
+    const language = isSupportedLanguage(settings.language) ? settings.language : detectBrowserLanguage();
+    setActiveLanguage(language);
+
   } catch (e) {
     console.error('Failed to apply early theme', e);
   }

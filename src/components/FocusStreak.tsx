@@ -1,12 +1,14 @@
 import { useFocusSessions } from '../hooks/useFocusSessions'
+import { useTranslation } from '../i18n'
 
 export function FocusStreak() {
   const { streak, weeklyBlocks } = useFocusSessions()
+  const { t } = useTranslation()
   const maxBlocks = Math.max(...weeklyBlocks, 1)
 
   return (
-    <div className="stat-item focus-streak-item" title="Focus streak — days with at least one completed session">
-      <span className="stat-label">FOCUS</span>
+    <div className="stat-item focus-streak-item" title={t('focusStreak.title')}>
+      <span className="stat-label">{t('focusStreak.label')}</span>
       <div className="gh-sparkline">
         {weeklyBlocks.map((count, i) => (
           <div

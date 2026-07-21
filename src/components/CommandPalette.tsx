@@ -10,6 +10,9 @@ import { useAIProviders } from '../hooks/useAIProviders'
 import { useAIMemory } from '../hooks/useAIMemory'
 import { executeActions, buildContext, fetchFrequentDestinations, parseDateQuery, fetchHistoryForDateRange } from '../utils/ai-command-parser'
 import { isSafeUrl } from '../utils/browser'
+import { useTranslation } from '../i18n'
+import type { TranslationKey } from '../i18n'
+import { SUPPORTED_LANGUAGES } from '../i18n'
 
 interface Result {
   id: string
@@ -27,11 +30,12 @@ interface RecentItem {
   ts: number
 }
 
-const SEARCH_ENGINES: Record<string, { name: string; url: string }> = {
-  google:     { name: 'Google',     url: 'https://www.google.com/search?q=' },
-  duckduckgo: { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=' },
-  github:     { name: 'GitHub',     url: 'https://github.com/search?q=' },
-  youtube:    { name: 'YouTube',    url: 'https://www.youtube.com/results?search_query=' },
+const SEARCH_ENGINES: Record<string, { name: string; url: string; labelKey: TranslationKey }> = {
+  google:     { name: 'Google',     url: 'https://www.google.com/search?q=',           labelKey: 'cp.engine.google' },
+  duckduckgo: { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=',                 labelKey: 'cp.engine.duckduckgo' },
+  baidu:      { name: 'Baidu',      url: 'https://www.baidu.com/s?wd=',                 labelKey: 'cp.engine.baidu' },
+  github:     { name: 'GitHub',     url: 'https://github.com/search?q=',                labelKey: 'cp.engine.github' },
+  youtube:    { name: 'YouTube',    url: 'https://www.youtube.com/results?search_query=', labelKey: 'cp.engine.youtube' },
 }
 
 function fuzzy(str: string, query: string): boolean {
@@ -207,15 +211,16 @@ const FONT_LIST = [
   'Commit Mono', 'Source Code Pro', 'Inconsolata', 'Hack',
 ]
 
-const SLASH_COMMANDS = [
-  { name: 'chrome-tab', desc: 'Open Chrome new tab page', icon: <Earth size={16} />, hint: '' },
-  { name: 'theme', desc: 'Change color theme', icon: '◑', hint: '<name>' },
-  { name: 'font', desc: 'Change font family', icon: '𝐀', hint: '<name>' },
-  { name: 'goal', desc: "Set today's daily goal", icon: '▸', hint: '<text>' },
-  { name: 'note', desc: 'Append text to scratchpad', icon: '✎', hint: '<text>' },
-  { name: 'clock', desc: 'Set clock format', icon: '◷', hint: '12h | 24h' },
-  { name: 'export', desc: 'Export settings to JSON', icon: '↓' },
-  { name: 'clear', desc: 'Clear recent history', icon: '✕' },
+const SLASH_COMMANDS: { name: string; descKey: TranslationKey; icon: any; hint?: string }[] = [
+  { name: 'chrome-tab', descKey: 'cp.cmd.chromeTab', icon: <Earth size={16} />, hint: '' },
+  { name: 'theme', descKey: 'cp.cmd.theme', icon: '◑', hint: '<name>' },
+  { name: 'font', descKey: 'cp.cmd.font', icon: '𝐀', hint: '<name>' },
+  { name: 'goal', descKey: 'cp.cmd.goal', icon: '▸', hint: '<text>' },
+  { name: 'note', descKey: 'cp.cmd.note', icon: '✎', hint: '<text>' },
+  { name: 'clock', descKey: 'cp.cmd.clock', icon: '◷', hint: '12h | 24h' },
+  { name: 'language', descKey: 'cp.cmd.language', icon: '⌘', hint: '<name>' },
+  { name: 'export', descKey: 'cp.cmd.export', icon: '↓' },
+  { name: 'clear', descKey: 'cp.cmd.clear', icon: '✕' },
 ]
 
 export function CommandPalette() {
@@ -224,6 +229,7 @@ export function CommandPalette() {
   const [selected, setSelected] = useState(0)
   const [engine, setEngine] = useState('google')
   const [toast, setToast] = useState<string | null>(null)
+  const { t: tr, locale } = useTranslation()
   const [historyResults, setHistoryResults] = useState<RecentItem[]>([])
   const { categories } = useBookmarks()
   const [settings, setSettings] = useSettings()
@@ -358,7 +364,7 @@ export function CommandPalette() {
             const item: Result = {
               id: `cmd-${cmd.name}`,
               label: `/${cmd.name}`,
-              sub: cmd.hint ? `${cmd.desc} — ${cmd.hint}` : cmd.desc,
+              sub: cmd.hint ? `${tr(cmd.descKey)} — ${cmd.hint}` : tr(cmd.descKey),
               icon: cmd.icon,
               type: 'command',
             }
@@ -366,13 +372,13 @@ export function CommandPalette() {
              case 'export':
                 item.action = () => {
                   import('../utils/backup').then(m => m.exportSettings())
-                  showToast('Exporting...')
+                  showToast(tr('cp.toast.exporting'))
                 }
                 break
               case 'clear':
                 item.action = () => {
                   setRecent([])
-                  showToast('History cleared')
+                  showToast(tr('cp.toast.historyCleared'))
                 }
                 break
               case 'chrome-tab':
@@ -393,12 +399,12 @@ export function CommandPalette() {
               out.push({
                 id: `cmd-theme-${t.id}`,
                 label: t.name,
-                sub: settings.theme === t.id ? '● current' : 'apply theme',
+                sub: settings.theme === t.id ? tr('cp.current') : tr('cp.applyTheme'),
                 icon: '◑',
                 type: 'command',
                 action: () => {
                   setSettings(prev => ({ ...prev, theme: t.id }))
-                  showToast(`Theme → ${t.name}`)
+                  showToast(tr('cp.toast.themeChanged', { name: t.name }))
                 },
               })
             }
@@ -411,12 +417,12 @@ export function CommandPalette() {
               out.push({
                 id: `cmd-font-${f}`,
                 label: f,
-                sub: settings.font === f ? '● current' : 'apply font',
+                sub: settings.font === f ? tr('cp.current') : tr('cp.applyFont'),
                 icon: '𝐀',
                 type: 'command',
                 action: () => {
                   setSettings(prev => ({ ...prev, font: f }))
-                  showToast(`Font → ${f}`)
+                  showToast(tr('cp.toast.fontChanged', { name: f }))
                 },
               })
             }
@@ -428,19 +434,19 @@ export function CommandPalette() {
             out.push({
               id: 'cmd-goal-set',
               label: args.trim().slice(0, 120),
-              sub: "set as today's goal",
+              sub: tr('cp.setGoal'),
               icon: '▸',
               type: 'command',
               action: () => {
                 setDailyGoal({ text: args.trim().slice(0, 120), date: todayKey() })
-                showToast('Goal set')
+                showToast(tr('cp.toast.goalSet'))
               },
             })
           } else {
             out.push({
               id: 'cmd-goal-hint',
               label: '/goal <text>',
-              sub: 'type your goal after the command',
+              sub: tr('cp.goalHint'),
               icon: '▸',
               type: 'command',
             })
@@ -452,19 +458,19 @@ export function CommandPalette() {
             out.push({
               id: 'cmd-note-append',
               label: args.trim(),
-              sub: 'append to scratchpad',
+              sub: tr('cp.appendScratchpad'),
               icon: '✎',
               type: 'command',
               action: () => {
                 setScratchpad(prev => prev ? prev + '\n' + args.trim() : args.trim())
-                showToast('Added to scratchpad')
+                showToast(tr('cp.toast.addedScratchpad'))
               },
             })
           } else {
             out.push({
               id: 'cmd-note-hint',
               label: '/note <text>',
-              sub: 'type your note after the command',
+              sub: tr('cp.noteHint'),
               icon: '✎',
               type: 'command',
             })
@@ -473,20 +479,39 @@ export function CommandPalette() {
 
         case 'clock': {
           const formats: { value: '12h' | '24h'; label: string }[] = [
-            { value: '12h', label: '12-Hour' },
-            { value: '24h', label: '24-Hour' },
+            { value: '12h', label: tr('settings.pref.clock12h') },
+            { value: '24h', label: tr('settings.pref.clock24h') },
           ]
           for (const f of formats) {
             if (!args || fuzzy(f.value, args) || fuzzy(f.label, args)) {
               out.push({
                 id: `cmd-clock-${f.value}`,
                 label: f.label,
-                sub: settings.clockFormat === f.value ? '● current' : 'switch format',
+                sub: settings.clockFormat === f.value ? tr('cp.current') : tr('cp.switchFormat'),
                 icon: '◷',
                 type: 'command',
                 action: () => {
                   setSettings(prev => ({ ...prev, clockFormat: f.value }))
-                  showToast(`Clock → ${f.label}`)
+                  showToast(tr('cp.toast.clockChanged', { name: f.label }))
+                },
+              })
+            }
+          }
+          break
+        }
+
+        case 'language': {
+          for (const lang of SUPPORTED_LANGUAGES) {
+            if (!args || fuzzy(lang.label, args) || fuzzy(lang.code, args)) {
+              out.push({
+                id: `cmd-language-${lang.code}`,
+                label: lang.label,
+                sub: settings.language === lang.code ? tr('cp.current') : tr('cp.switchLanguage'),
+                icon: '⌘',
+                type: 'command',
+                action: () => {
+                  setSettings(prev => ({ ...prev, language: lang.code }))
+                  showToast(tr('cp.toast.languageChanged', { name: lang.label }))
                 },
               })
             }
@@ -497,13 +522,13 @@ export function CommandPalette() {
         case 'export':
           out.push({
             id: 'cmd-export-run',
-            label: 'Export to JSON',
-            sub: 'download settings backup',
+            label: tr('cp.exportRun'),
+            sub: tr('cp.exportSub'),
             icon: '↓',
             type: 'command',
             action: () => {
               import('../utils/backup').then(m => m.exportSettings())
-              showToast('Exporting...')
+              showToast(tr('cp.toast.exporting'))
             },
           })
           break
@@ -512,13 +537,13 @@ export function CommandPalette() {
           if (!args || fuzzy('recent', args)) {
             out.push({
               id: 'cmd-clear-recent',
-              label: 'Clear recent history',
-              sub: `${recent.length} items`,
+              label: tr('cp.clearRecent'),
+              sub: tr('cp.itemsCount', { count: recent.length }),
               icon: '✕',
               type: 'command',
               action: () => {
                 setRecent([])
-                showToast('History cleared')
+                showToast(tr('cp.toast.historyCleared'))
               },
             })
           }
@@ -526,8 +551,8 @@ export function CommandPalette() {
         case 'chrome-tab':
           out.push({
             id: 'cmd-chrome-tab-run',
-            label: 'Open Chrome Tab',
-            sub: 'Navigate to chrome://new-tab-page',
+            label: tr('cp.openChromeTab'),
+            sub: tr('cp.chromeTabSub'),
             icon: <Earth size={16} />,
             type: 'command',
             action: () => openChromeNewTab()
@@ -545,7 +570,7 @@ export function CommandPalette() {
           out.push({
             id: 'ai-command',
             label: aiQuery,
-            sub: aiLoading ? 'Processing...' : 'Ask AI',
+            sub: aiLoading ? tr('cp.aiProcessing') : tr('cp.aiAsk'),
             icon: aiLoading ? <span className="cp-dots"><span /><span /><span /></span> : '✦',
             type: 'ai' as const,
             action: aiLoading ? undefined : async () => {
@@ -561,7 +586,7 @@ export function CommandPalette() {
                   dateHistory = await fetchHistoryForDateRange(dateRange.startTime, dateRange.endTime)
                   if (dateHistory.length > 0) {
                     dateHistoryStr = `[${dateRange.label}]\n` + dateHistory.map(h => {
-                      const time = new Date(h.ts).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+                      const time = new Date(h.ts).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
                       return `${time} — ${h.title} (${h.url})`
                     }).join('\n')
                   }
@@ -599,20 +624,20 @@ export function CommandPalette() {
                 for (const ra of rememberActions) {
                   if (ra.url) {
                     await saveMemory(ra.value, ra.url, 'ai')
-                    showToast(`Learned: "${ra.value}" → ${ra.url}`)
+                    showToast(tr('cp.toast.learned', { keyword: ra.value, url: ra.url }))
                   }
                 }
 
                 if (execActions.length === 0 && rememberActions.length === 0 && !answerAction) {
-                  setAiError('No actions returned from AI')
+                  setAiError(tr('cp.aiNoActions'))
                   return
                 }
 
                 if (execActions.length > 0) {
-                  showToast(`Executed ${execActions.length} action${execActions.length > 1 ? 's' : ''}`)
+                  showToast(tr('cp.toast.executed', { count: execActions.length, plural: execActions.length > 1 ? 's' : '' }))
                 }
               } catch (err) {
-                setAiError(err instanceof Error ? err.message : 'AI command failed')
+                setAiError(err instanceof Error ? err.message : tr('cp.aiFailed'))
                 return
               } finally {
                 setAiLoading(false)
@@ -627,8 +652,8 @@ export function CommandPalette() {
       } else {
         out.push({
           id: 'ai-no-provider',
-          label: 'No AI provider configured',
-          sub: 'Add an API key in Settings > AI',
+          label: tr('cp.aiNoProvider'),
+          sub: tr('cp.aiNoProviderSub'),
           icon: '⚠️',
           type: 'command' as const,
         })
@@ -646,20 +671,20 @@ export function CommandPalette() {
       return out
     }
 
-    // Calculator — prefix with = 
+    // Calculator — prefix with =
     if (query.startsWith('=')) {
       const expr = query.slice(1).trim()
       const calcResult = expr ? tryCalc(expr) : null
       out.push({
         id: '__calc__',
         label: calcResult !== null ? `= ${calcResult}` : '= ...',
-        sub: calcResult !== null ? 'Enter to copy result' : 'type an expression, e.g. = 1920/2',
+        sub: calcResult !== null ? tr('cp.calcCopy') : tr('cp.calcHint'),
         icon: '∑',
         type: 'calc',
         action: calcResult !== null ? () => {
           void navigator.clipboard.writeText(calcResult)
-            .then(() => showToast(`Copied: ${calcResult}`))
-            .catch(() => showToast('Clipboard copy failed'))
+            .then(() => showToast(tr('cp.toast.copied', { value: calcResult })))
+            .catch(() => showToast(tr('cp.toast.clipboardFailed')))
         } : undefined,
       })
       return out
@@ -668,7 +693,7 @@ export function CommandPalette() {
     // Exact URL typed
     if (isUrl(query)) {
       const href = /^https?:\/\//i.test(query) ? query : 'https://' + query
-      out.push({ id: '__url__', label: query, sub: 'Go to URL', url: href, icon: '↗', type: 'url' })
+      out.push({ id: '__url__', label: query, sub: tr('cp.goToUrl'), url: href, icon: '↗', type: 'url' })
     }
 
     // Aliases
@@ -700,7 +725,7 @@ export function CommandPalette() {
     if (query.trim() && !isUrl(query)) {
       out.push({
         id: '__search__',
-        label: `Search "${query}"`,
+        label: tr('cp.search', { query }),
         sub: `${SEARCH_ENGINES[engine].name}`,
         url: SEARCH_ENGINES[engine].url + encodeURIComponent(query),
         icon: '⌕',
@@ -727,7 +752,7 @@ export function CommandPalette() {
     }
 
     return out
-  }, [query, categories, aliases, engine, settings.theme, settings.font, settings.clockFormat, recent, historyResults, showToast, setSettings, setRecent, setDailyGoal, setScratchpad, tabs, activeProvider, aiLoading, executeCommand])
+  }, [query, categories, aliases, engine, settings.theme, settings.font, settings.clockFormat, settings.language, recent, historyResults, showToast, setSettings, setRecent, setDailyGoal, setScratchpad, tabs, activeProvider, aiLoading, executeCommand, tr, locale])
 
   useEffect(() => { setSelected(0) }, [query])
 
@@ -748,7 +773,7 @@ export function CommandPalette() {
       if (typeof chrome !== 'undefined' && chrome.tabs) {
         chrome.tabs.get(Number(r.id.replace('tab-', '')), (tab) => {
           if (chrome.runtime.lastError || !tab) {
-            showToast('Tab no longer exists')
+            showToast(tr('cp.toast.tabGone'))
             return
           }
           chrome.tabs.highlight({ windowId: tab.windowId, tabs: tab.index })
@@ -767,7 +792,7 @@ export function CommandPalette() {
       r.action()
     } else if (r.url) {
       if (!isSafeUrl(r.url)) {
-        showToast('Invalid URL')
+        showToast(tr('cp.toast.invalidUrl'))
         setIsOpen(false)
         setQuery('')
         return
@@ -816,9 +841,9 @@ export function CommandPalette() {
       {/* Trigger bar — sits inline where SearchBar used to be */}
       <div className="cp-trigger" onClick={() => { setIsOpen(true); setQuery(''); setSelected(0) }}>
         <Search size={14} className="cp-trigger-icon" />
-        <span className="cp-trigger-text">search, navigate, or jump...</span>
+        <span className="cp-trigger-text">{tr('cp.trigger.text')}</span>
         <span className="cp-trigger-hint">
-          <kbd>⌘K</kbd>
+          <kbd>⌘+K</kbd>
           <span className="cp-trigger-sep">/</span>
           <kbd>/</kbd>
         </span>
@@ -836,7 +861,7 @@ export function CommandPalette() {
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="search, go to URL, or / for commands, > for tabs..."
+                placeholder={tr('cp.input.placeholder')}
                 spellCheck={false}
               />
               {!query.startsWith('/') && (
@@ -848,12 +873,12 @@ export function CommandPalette() {
                       onClick={e => { e.stopPropagation(); setEngine(key) }}
                       title={val.name}
                     >
-                      {key.slice(0, 2)}
+                      {tr(val.labelKey)}
                     </button>
                   ))}
                 </div>
               )}
-              <span className="cp-esc">esc</span>
+              <span className="cp-esc">{tr('cp.esc')}</span>
             </div>
 
             {aiAnswer ? (
@@ -883,7 +908,7 @@ export function CommandPalette() {
                   className="cp-save-journal"
                   onClick={() => {
                     const dateKey = aiAnswer.dateKey
-                    const dateLabel = new Date(dateKey + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                    const dateLabel = new Date(dateKey + 'T00:00:00').toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' })
                     const linkList = aiAnswer.urls.length > 0
                       ? '\n' + aiAnswer.urls.map(u => `• ${u.label} — ${u.url}`).join('\n')
                       : ''
@@ -896,10 +921,10 @@ export function CommandPalette() {
                     setAiAnswer(null)
                     setIsOpen(false)
                     setQuery('')
-                    showToast('Saved to journal')
+                    showToast(tr('cp.toast.savedJournal'))
                   }}
                 >
-                  <Bookmark size={14} style={{ marginRight: 6 }} /> Save to journal
+                  <Bookmark size={14} style={{ marginRight: 6 }} /> {tr('cp.saveJournal')}
                 </button>
               </div>
             ) : results.length > 0 && (
@@ -930,20 +955,20 @@ export function CommandPalette() {
 
             {aiAnswer && (
               <div className="cp-hint-row">
-                <span>Click a chip to open in new tab</span>
-                <span>esc close</span>
+                <span>{tr('cp.hint.openChip')}</span>
+                <span>{tr('cp.hint.close')}</span>
               </div>
             )}
             {!query && !aiAnswer && (
               <div className="cp-hint-row">
-                <span>↑↓ navigate</span>
-                <span>↵ open</span>
-                <span>/commands</span>
-                <span>&gt; tabs</span>
-                {activeProvider && <span>! AI</span>}
+                <span>{tr('cp.hint.navigate')}</span>
+                <span>{tr('cp.hint.open')}</span>
+                <span>{tr('cp.hint.commands')}</span>
+                <span>{tr('cp.hint.tabs')}</span>
+                {activeProvider && <span>{tr('cp.hint.ai')}</span>}
                 {recent.length > 0
-                  ? <button className="cp-clear-btn" onClick={e => { e.stopPropagation(); setRecent([]) }}>clear history</button>
-                  : <span>esc close</span>
+                  ? <button className="cp-clear-btn" onClick={e => { e.stopPropagation(); setRecent([]) }}>{tr('cp.hint.clearHistory')}</button>
+                  : <span>{tr('cp.hint.close')}</span>
                 }
               </div>
             )}

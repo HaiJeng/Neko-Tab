@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage'
+import { useTranslation } from '../i18n'
 
 interface DailyGoalData {
   text: string
@@ -15,6 +16,7 @@ export function DailyGoal() {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
+  const { t } = useTranslation()
 
   // reset if stale date
   const goal = stored?.date === todayKey() ? stored.text : null
@@ -52,7 +54,7 @@ export function DailyGoal() {
           onChange={e => setDraft(e.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={commit}
-          placeholder="today's goal..."
+          placeholder={t('dailyGoal.inputPlaceholder')}
           maxLength={120}
           spellCheck={false}
         />
@@ -61,14 +63,14 @@ export function DailyGoal() {
   }
 
   return (
-    <div className="daily-goal-container" onClick={() => setEditing(true)} title="Click to set today's goal">
+    <div className="daily-goal-container" onClick={() => setEditing(true)} title={t('dailyGoal.setTitle')}>
       {goal ? (
         <>
           <span className="daily-goal-prompt">▸</span>
           <span className="daily-goal-text">{goal}</span>
         </>
       ) : (
-        <span className="daily-goal-placeholder">{'> set today\'s goal...'}</span>
+        <span className="daily-goal-placeholder">{t('dailyGoal.placeholder')}</span>
       )}
     </div>
   )

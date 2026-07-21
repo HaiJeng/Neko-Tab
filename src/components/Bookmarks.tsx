@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, X, Check, ChevronDown, ChevronRight } from 'lucid
 import type { BookmarkCategory, Bookmark } from '../types'
 import { recordTabUsage } from '../utils/tabUsage'
 import { isSafeUrl } from '../utils/browser'
+import { useTranslation } from '../i18n'
 
 interface BookmarksProps {
   categories: BookmarkCategory[]
@@ -35,6 +36,7 @@ export function Bookmarks({
   showBookmarks,
   onToggleShowBookmarks,
 }: BookmarksProps) {
+  const { t } = useTranslation()
   const [editing, setEditing] = useState<EditingState>({ type: null })
   const [isEditMode, setIsEditMode] = useState(false)
   const [topSites, setTopSites] = useState<{ title: string; url: string }[]>(() => {
@@ -147,13 +149,13 @@ export function Bookmarks({
           onClick={onToggleShowBookmarks}
         >
           {showBookmarks ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-          <h3 className="quick-links-title">QUICK LINKS</h3>
+          <h3 className="quick-links-title">{t('bookmarks.quickLinks')}</h3>
         </div>
-        <button 
+        <button
           className="action-btn-mini"
           style={{ opacity: isEditMode ? 1 : 0.5 }}
           onClick={() => setIsEditMode(!isEditMode)}
-          title={isEditMode ? "Done editing" : "Edit bookmarks"}
+          title={isEditMode ? t('bookmarks.doneEditing') : t('bookmarks.editBookmarks')}
         >
           {isEditMode ? <Check size={14} /> : <Pencil size={14} />}
         </button>
@@ -170,7 +172,7 @@ export function Bookmarks({
         {topSites.length > 0 && (
           <div className="category-column">
             <div className="category-header">
-              <span className="category-name">Frequently Visited</span>
+              <span className="category-name">{t('bookmarks.frequentlyVisited')}</span>
             </div>
             <div className="bookmarks-list">
               {topSites.map((site, index) => (
@@ -216,21 +218,21 @@ export function Bookmarks({
                   <button 
                     className="action-btn-mini"
                     onClick={(e) => startNewBookmark(e, cat.id)}
-                    title="Add bookmark"
+                    title={t('bookmarks.addBookmark')}
                   >
                     <Plus size={12} />
                   </button>
-                  <button 
+                  <button
                     className="action-btn-mini"
                     onClick={(e) => startEditCategory(e, cat)}
-                    title="Edit category"
+                    title={t('bookmarks.editCategory')}
                   >
                     <Pencil size={12} />
                   </button>
-                  <button 
+                  <button
                     className="action-btn-mini action-btn-danger"
                     onClick={(e) => handleDeleteCategory(e, cat.id)}
-                    title="Delete category"
+                    title={t('bookmarks.deleteCategory')}
                   >
                     <Trash2 size={12} />
                   </button>
@@ -250,7 +252,7 @@ export function Bookmarks({
                         ref={inputRef}
                         type="text"
                         className="inline-input"
-                        placeholder="Title"
+                        placeholder={t('bookmarks.titlePlaceholder')}
                         value={editing.value}
                         onChange={e => setEditing({ ...editing, value: e.target.value })}
                         onKeyDown={handleKeyDown}
@@ -258,7 +260,7 @@ export function Bookmarks({
                       <input
                         type="text"
                         className="inline-input"
-                        placeholder="URL"
+                        placeholder={t('bookmarks.urlPlaceholder')}
                         value={editing.url}
                         onChange={e => setEditing({ ...editing, url: e.target.value })}
                         onKeyDown={handleKeyDown}
@@ -308,7 +310,7 @@ export function Bookmarks({
                     ref={inputRef}
                     type="text"
                     className="inline-input"
-                    placeholder="Title"
+                    placeholder={t('bookmarks.titlePlaceholder')}
                     value={editing.value}
                     onChange={e => setEditing({ ...editing, value: e.target.value })}
                     onKeyDown={handleKeyDown}
@@ -316,7 +318,7 @@ export function Bookmarks({
                   <input
                     type="text"
                     className="inline-input"
-                    placeholder="URL"
+                    placeholder={t('bookmarks.urlPlaceholder')}
                     value={editing.url}
                     onChange={e => setEditing({ ...editing, url: e.target.value })}
                     onKeyDown={handleKeyDown}

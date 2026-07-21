@@ -1,5 +1,6 @@
 import { useTime } from '../hooks/useLocalStorage'
 import { useState, useEffect } from 'react'
+import { useTranslation } from '../i18n'
 
 interface ClockProps {
   userName?: string
@@ -9,6 +10,7 @@ interface ClockProps {
 
 export function Clock({ userName = 'User', showGreeting = true, format = '24h' }: ClockProps) {
   const time = useTime()
+  const { t, locale } = useTranslation()
   const [isMaximized, setIsMaximized] = useState(false)
 
   useEffect(() => {
@@ -60,62 +62,15 @@ export function Clock({ userName = 'User', showGreeting = true, format = '24h' }
   
   const hours = time.getHours()
 
-  const greetingPool: Record<string, string[]> = {
-    lateNight: [
-      'Burning the midnight oil',
-      'Still up?',
-      'The night shift suits you',
-      'Quiet hours, sharp focus',
-      'Owls and coders never sleep',
-    ],
-    earlyMorning: [
-      'Rise and grind',
-      'Early bird mode',
-      'Getting a head start',
-      'The world is still asleep',
-      'Coffee first?',
-    ],
-    morning: [
-      'Good morning',
-      'Ready to build something?',
-      'Fresh start',
-      'Morning, let\'s get to it',
-      'Hope the coffee is good',
-    ],
-    lateMorning: [
-      'Good morning',
-      'Almost noon — how\'s it going?',
-      'Hope the morning\'s been kind',
-      'Settling into the day',
-    ],
-    afternoon: [
-      'Good afternoon',
-      'Keep the momentum going',
-      'Afternoon grind',
-      'Deep work hours',
-      'You\'ve got this',
-    ],
-    lateAfternoon: [
-      'Wrapping up or pushing through?',
-      'Golden hour productivity',
-      'Almost there',
-      'Good afternoon',
-      'The day isn\'t over yet',
-    ],
-    evening: [
-      'Good evening',
-      'Winding down?',
-      'Evening session',
-      'One last push?',
-      'Hope the day treated you well',
-    ],
-    night: [
-      'Good evening',
-      'Late night mode',
-      'Building something tonight?',
-      'The quiet before midnight',
-      'Focus time',
-    ],
+  const SEGMENT_SIZES: Record<string, number> = {
+    lateNight: 5,
+    earlyMorning: 5,
+    morning: 5,
+    lateMorning: 4,
+    afternoon: 5,
+    lateAfternoon: 5,
+    evening: 5,
+    night: 5,
   }
 
   const getSegment = () => {
@@ -131,28 +86,28 @@ export function Clock({ userName = 'User', showGreeting = true, format = '24h' }
   }
 
   const segment = getSegment()
-  const pool = greetingPool[segment]
   // Rotate daily so it changes but isn't random on every re-render
   const dayOfYear = Math.floor((time.getTime() - new Date(time.getFullYear(), 0, 0).getTime()) / 86400000)
-  const greeting = pool[dayOfYear % pool.length]
-  
-  const formattedTime = time.toLocaleTimeString('en-US', {
+  const greetingIndex = dayOfYear % SEGMENT_SIZES[segment]
+  const greeting = t(`clock.greeting.${segment}.${greetingIndex}` as any)
+
+  const formattedTime = time.toLocaleTimeString(locale, {
     hour: '2-digit',
     minute: '2-digit',
     hour12: format === '12h'
   })
-  
-  const formattedDate = time.toLocaleDateString('en-US', {
+
+  const formattedDate = time.toLocaleDateString(locale, {
     weekday: 'long',
     month: 'long',
     day: 'numeric'
   })
 
   return (
-    <div 
+    <div
       className={`clock-container ${isMaximized ? 'maximized' : ''}`}
       onClick={() => setIsMaximized(!isMaximized)}
-      title={isMaximized ? 'Click to exit' : 'Click to maximize'}
+      title={isMaximized ? t('clock.exit') : t('clock.maximize')}
     >
       <div className="clock-time">{formattedTime}</div>
       <div className="clock-date">{formattedDate}</div>

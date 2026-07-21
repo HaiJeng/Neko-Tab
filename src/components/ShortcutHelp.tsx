@@ -1,24 +1,27 @@
 import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
+import { useTranslation } from '../i18n'
+import type { TranslationKey } from '../i18n'
 
-const SHORTCUTS = [
-  { keys: 'Ctrl+K',         desc: 'Command palette — search bookmarks & aliases' },
-  { keys: '/command',        desc: 'Slash commands — /theme, /font, /goal, /note' },
-  { keys: 'Ctrl+`',         desc: 'Toggle scratchpad / notes drawer' },
-  { keys: 'Ctrl+Shift+T',   desc: 'Start / stop work timer' },
-  { keys: 'Alt+Shift+S',    desc: 'Open startup sites instantly' },
-  { keys: 'c',              desc: 'Open Chrome new tab page' },
-  { keys: '?',              desc: 'Show this shortcut help' },
-  { keys: 'Escape',         desc: 'Close any open panel' },
-  { keys: '↑ / ↓',         desc: 'Navigate command palette results' },
-  { keys: 'Enter',          desc: 'Open selected result in command palette' },
-  { keys: 'Enter / Escape', desc: 'Confirm / cancel daily goal edit' },
-  { keys: 'Enter',          desc: 'New checklist item (in scratchpad)' },
-  { keys: 'Backspace',      desc: 'Delete empty checklist item' },
+const SHORTCUTS: { keys: string; descKey: TranslationKey }[] = [
+  { keys: 'Ctrl+K',         descKey: 'shortcut.commandPalette' },
+  { keys: '/command',        descKey: 'shortcut.slashCommands' },
+  { keys: 'Ctrl+`',         descKey: 'shortcut.scratchpad' },
+  { keys: 'Ctrl+Shift+T',   descKey: 'shortcut.workTimer' },
+  { keys: 'Alt+Shift+S',    descKey: 'shortcut.startupSites' },
+  { keys: 'c',              descKey: 'shortcut.chromeTab' },
+  { keys: '?',              descKey: 'shortcut.help' },
+  { keys: 'Escape',         descKey: 'shortcut.closePanel' },
+  { keys: '↑ / ↓',         descKey: 'shortcut.navigate' },
+  { keys: 'Enter',          descKey: 'shortcut.openResult' },
+  { keys: 'Enter / Escape', descKey: 'shortcut.dailyGoal' },
+  { keys: 'Enter',          descKey: 'shortcut.newChecklist' },
+  { keys: 'Backspace',      descKey: 'shortcut.deleteChecklist' },
 ]
 
 export function ShortcutHelp() {
   const [isOpen, setIsOpen] = useState(false)
+  const { t } = useTranslation()
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -37,18 +40,18 @@ export function ShortcutHelp() {
     <div className="sh-overlay" onClick={() => setIsOpen(false)}>
       <div className="sh-panel" onClick={e => e.stopPropagation()}>
         <div className="sh-header">
-          <span className="sh-title">~ keyboard shortcuts</span>
+          <span className="sh-title">{t('shortcut.title')}</span>
           <button className="sh-close" onClick={() => setIsOpen(false)}><X size={15} /></button>
         </div>
         <div className="sh-list">
           {SHORTCUTS.map((s, i) => (
             <div key={i} className="sh-row">
               <kbd className="sh-kbd">{s.keys}</kbd>
-              <span className="sh-desc">{s.desc}</span>
+              <span className="sh-desc">{t(s.descKey)}</span>
             </div>
           ))}
         </div>
-        <div className="sh-footer">press <kbd className="sh-kbd">?</kbd> or <kbd className="sh-kbd">esc</kbd> to close</div>
+        <div className="sh-footer">{t('shortcut.footerPrefix')} <kbd className="sh-kbd">?</kbd> {t('shortcut.footerOr')} <kbd className="sh-kbd">esc</kbd> {t('shortcut.footerSuffix')}</div>
       </div>
     </div>
   )

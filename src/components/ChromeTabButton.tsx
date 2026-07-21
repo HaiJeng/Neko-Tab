@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Earth } from 'lucide-react'
 import { recordTabUsage } from '../utils/tabUsage'
+import { useTranslation } from '../i18n'
 
 export const openChromeNewTab = () => {
   if (typeof chrome !== 'undefined' && chrome.tabs) {
@@ -14,6 +15,7 @@ interface ChromeTabButtonProps {
 }
 
 export function ChromeTabButton({ visible = true }: ChromeTabButtonProps) {
+  const { t } = useTranslation()
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName
@@ -32,10 +34,10 @@ export function ChromeTabButton({ visible = true }: ChromeTabButtonProps) {
   if (!visible) return null
 
   return (
-    <button 
-      className="chrome-tab-toggle" 
-      onClick={openChromeNewTab} 
-      title="Open Chrome Tab (c)"
+    <button
+      className="chrome-tab-toggle"
+      onClick={openChromeNewTab}
+      title={t('chromeTab.title')}
     >
       <Earth size={20} />
     </button>

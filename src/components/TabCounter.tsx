@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { getTabUsageStorageKey, readTabUsageCount } from '../utils/tabUsage'
+import { useTranslation } from '../i18n'
 
 export function TabCounter() {
   const [tabCount, setTabCount] = useState(0)
+  const { t } = useTranslation()
 
   useEffect(() => {
     const syncCount = async () => {
@@ -37,8 +39,8 @@ export function TabCounter() {
   }, [])
 
   return (
-    <div className="stat-item" title={`${tabCount} tabs turned into real navigation today in this browser session`}>
-      <span className="stat-label">TABS TODAY</span>
+    <div className="stat-item" title={t('tabCounter.title', { count: tabCount })}>
+      <span className="stat-label">{t('tabCounter.label')}</span>
       <span className="stat-value">{tabCount}</span>
     </div>
   )

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAIProviders } from '../../hooks/useAIProviders'
 import type { AIProvider, AIProviderConfig } from '../../types'
 import { Key, Trash2, Plus, Check, AlertCircle } from 'lucide-react'
+import { useTranslation } from '../../i18n'
 
 function maskKey(key: string): string {
   if (key.length <= 8) return key.slice(0, 2) + '****'
@@ -10,6 +11,7 @@ function maskKey(key: string): string {
 
 export function AIProviders() {
   const { providers, activeProvider, saveProvider, removeProvider, setActive, loadProviders, providerDefaults } = useAIProviders()
+  const { t } = useTranslation()
 
   useEffect(() => {
     loadProviders()
@@ -66,13 +68,13 @@ export function AIProviders() {
     try {
       const provider = providers.find(p => p.provider === activeProvider)
       if (!provider) {
-        throw new Error('No provider configured')
+        throw new Error(t('aiProviders.noProviderConfigured'))
       }
 
       const providerType = provider.provider
       const baseUrl = provider.baseUrl || providerDefaults[providerType].baseUrl
       if (!baseUrl) {
-        throw new Error('Base URL not configured')
+        throw new Error(t('aiProviders.baseUrlNotConfigured'))
       }
 
       let response: Response
@@ -102,13 +104,13 @@ export function AIProviders() {
       }
 
       if (response.ok) {
-        setTestResult({ success: true, message: 'Connection successful!' })
+        setTestResult({ success: true, message: t('aiProviders.connectionSuccess') })
       } else {
         const errorText = await response.text().catch(() => '')
-        setTestResult({ success: false, message: `API returned ${response.status}${errorText ? ' — ' + errorText.slice(0, 100) : ''}` })
+        setTestResult({ success: false, message: `${t('aiProviders.apiReturned', { status: response.status })}${errorText ? ' — ' + errorText.slice(0, 100) : ''}` })
       }
     } catch (err) {
-      setTestResult({ success: false, message: err instanceof Error ? err.message : 'Connection failed' })
+      setTestResult({ success: false, message: err instanceof Error ? err.message : t('aiProviders.connectionFailed') })
     } finally {
       setTesting(false)
     }
@@ -120,10 +122,10 @@ export function AIProviders() {
         <div className="saas-flex-row" style={{ justifyContent: 'space-between', marginBottom: 16 }}>
           <label className="saas-label" style={{ margin: 0 }}>
             <Key size={16} style={{ marginRight: 8 }} />
-            AI Providers
+            {t('aiProviders.title')}
           </label>
           <button className="saas-btn-primary" onClick={() => setShowAddForm(!showAddForm)}>
-            <Plus size={14} /> Add Provider
+            <Plus size={14} /> {t('aiProviders.add')}
           </button>
         </div>
 
@@ -144,7 +146,7 @@ export function AIProviders() {
             <input
               type="password"
               className="saas-input"
-              placeholder="API Key"
+              placeholder={t('aiProviders.apiKeyPlaceholder')}
               value={apiKey}
               onChange={e => setApiKey(e.target.value)}
               style={{ marginBottom: 8 }}
@@ -160,14 +162,14 @@ export function AIProviders() {
                       className={`saas-segment ${customFormat === f ? 'active' : ''}`}
                       onClick={() => setCustomFormat(f)}
                     >
-                      {f === 'openai' ? 'OpenAI format' : 'Anthropic format'}
+                      {f === 'openai' ? t('aiProviders.formatOpenai') : t('aiProviders.formatAnthropic')}
                     </button>
                   ))}
                 </div>
                 <input
                   type="text"
                   className="saas-input"
-                  placeholder={customFormat === 'anthropic' ? 'Base URL (e.g., http://host:3000/anthropic/v1)' : 'Base URL (e.g., https://api.openai.com/v1)'}
+                  placeholder={customFormat === 'anthropic' ? t('aiProviders.baseUrlAnthropic') : t('aiProviders.baseUrlOpenai')}
                   value={customBaseUrl}
                   onChange={e => setCustomBaseUrl(e.target.value)}
                   style={{ marginBottom: 8 }}
@@ -175,7 +177,7 @@ export function AIProviders() {
                 <input
                   type="text"
                   className="saas-input"
-                  placeholder="Model name"
+                  placeholder={t('aiProviders.modelPlaceholder')}
                   value={customModel}
                   onChange={e => setCustomModel(e.target.value)}
                 />
@@ -183,13 +185,13 @@ export function AIProviders() {
             )}
 
             <button className="saas-btn-primary" onClick={handleAddProvider} style={{ marginTop: 8 }}>
-              Save Provider
+              {t('aiProviders.save')}
             </button>
           </div>
         )}
 
         {providers.length === 0 ? (
-          <p className="saas-hint">No AI providers configured. Add one to enable AI commands.</p>
+          <p className="saas-hint">{t('aiProviders.empty')}</p>
         ) : (
           <div className="provider-list">
             {providers.map(provider => (
@@ -211,14 +213,14 @@ export function AIProviders() {
                         onChange={e => setEditKeyValue(e.target.value)}
                         autoComplete="off"
                       />
-                      <button className="saas-btn-primary" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => handleUpdateKey(provider.provider)}>Save</button>
-                      <button className="saas-btn-secondary" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => setEditingKey(null)}>Cancel</button>
+                      <button className="saas-btn-primary" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => handleUpdateKey(provider.provider)}>{t('aiProviders.saveKey')}</button>
+                      <button className="saas-btn-secondary" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => setEditingKey(null)}>{t('aiProviders.cancel')}</button>
                     </div>
                   ) : (
                     <span
                       style={{ fontSize: 11, opacity: 0.5, cursor: 'pointer', fontFamily: 'monospace' }}
                       onClick={() => { setEditingKey(provider.provider); setEditKeyValue('') }}
-                      title="Click to change key"
+                      title={t('aiProviders.changeKey')}
                     >
                       {maskKey(provider.apiKey)}
                     </span>
@@ -227,11 +229,11 @@ export function AIProviders() {
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0, marginLeft: 12 }}>
                   {activeProvider === provider.provider ? (
                     <span style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
-                      <Check size={14} /> Active
+                      <Check size={14} /> {t('aiProviders.active')}
                     </span>
                   ) : (
                     <button className="saas-btn-secondary" onClick={() => setActive(provider.provider)} style={{ fontSize: 12 }}>
-                      Activate
+                      {t('aiProviders.activate')}
                     </button>
                   )}
                   <button className="saas-btn-icon" onClick={() => removeProvider(provider.provider)}>
@@ -247,13 +249,13 @@ export function AIProviders() {
       {activeProvider && (
         <div className="saas-card">
           <div className="saas-flex-row" style={{ justifyContent: 'space-between' }}>
-            <label className="saas-label" style={{ margin: 0 }}>Test Connection</label>
+            <label className="saas-label" style={{ margin: 0 }}>{t('aiProviders.testConnection')}</label>
             <button
               className="saas-btn-secondary"
               onClick={handleTestProvider}
               disabled={testing}
             >
-              {testing ? 'Testing...' : 'Test'}
+              {testing ? t('aiProviders.testing') : t('aiProviders.test')}
             </button>
           </div>
           {testResult && (
@@ -265,11 +267,11 @@ export function AIProviders() {
       )}
 
       <div className="saas-card">
-        <label className="saas-label">Usage</label>
+        <label className="saas-label">{t('aiProviders.usage')}</label>
         <p className="saas-hint">
-          Type <code style={{ background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4 }}>!</code> in the command palette to trigger AI mode.
+          {t('aiProviders.usageHint')}
           <br /><br />
-          Examples:
+          {t('aiProviders.examples')}
           <br />- <code>! open email and slack</code>
           <br />- <code>! find that wiki page about auth</code>
           <br />- <code>! search stack overflow for react hooks</code>

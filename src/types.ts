@@ -1,3 +1,5 @@
+import type { SupportedLanguage } from './i18n/types'
+
 export interface StartupSite {
   url: string
 }
@@ -72,6 +74,8 @@ export interface Settings {
   connectors: Record<string, Record<string, unknown>>
   // Startup Sites
   startupSitesEnabled: boolean
+  // Language / i18n
+  language: SupportedLanguage
 }
 
 export interface TabItem {

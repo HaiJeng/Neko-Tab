@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { useAIMemory } from '../../hooks/useAIMemory'
 import type { AIMemory } from '../../types'
 import { Trash2, Search, Book } from 'lucide-react'
+import { useTranslation } from '../../i18n'
 
 export function AIMemorySettings() {
   const { memories, deleteMemory, updateMemory, clearAll } = useAIMemory()
+  const { t } = useTranslation()
   const [filter, setFilter] = useState('')
   const [editing, setEditing] = useState<string | null>(null)
   const [editKeyword, setEditKeyword] = useState('')
@@ -31,9 +33,9 @@ export function AIMemorySettings() {
 
   const sourceLabel = (s: AIMemory['source']) => {
     switch (s) {
-      case 'history': return 'History'
-      case 'ai': return 'AI'
-      case 'manual': return 'Manual'
+      case 'history': return t('aiMemory.sourceHistory')
+      case 'ai': return t('aiMemory.sourceAi')
+      case 'manual': return t('aiMemory.sourceManual')
     }
   }
 
@@ -42,11 +44,11 @@ export function AIMemorySettings() {
       <div className="saas-flex-row" style={{ justifyContent: 'space-between', marginBottom: 16 }}>
         <label className="saas-label" style={{ margin: 0 }}>
           <Book size={16} style={{ marginRight: 8 }} />
-          AI Memory ({memories.length})
+          {t('aiMemory.title', { count: memories.length })}
         </label>
         {memories.length > 0 && (
           <button className="saas-btn-secondary" onClick={clearAll} style={{ fontSize: 12, color: '#ef4444' }}>
-            Clear All
+            {t('aiMemory.clearAll')}
           </button>
         )}
       </div>
@@ -56,7 +58,7 @@ export function AIMemorySettings() {
         <input
           className="saas-input"
           style={{ paddingLeft: 28 }}
-          placeholder="Search memories..."
+          placeholder={t('aiMemory.searchPlaceholder')}
           value={filter}
           onChange={e => setFilter(e.target.value)}
         />
@@ -64,17 +66,17 @@ export function AIMemorySettings() {
 
       {memories.length === 0 ? (
         <p className="saas-hint">
-          No memories yet. Use <code style={{ background: 'rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: 4 }}>!</code> commands in the palette and the AI will learn your frequently visited URLs over time.
+          {t('aiMemory.empty')}
         </p>
       ) : filtered.length === 0 ? (
-        <p className="saas-hint">No memories match your search.</p>
+        <p className="saas-hint">{t('aiMemory.noMatch')}</p>
       ) : (
         <div className="provider-list">
           <div style={{ display: 'flex', fontSize: 11, opacity: 0.5, padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-            <span style={{ width: '30%' }}>Keyword</span>
-            <span style={{ flex: 1 }}>URL</span>
-            <span style={{ width: 60, textAlign: 'center' }}>Used</span>
-            <span style={{ width: 60, textAlign: 'center' }}>Source</span>
+            <span style={{ width: '30%' }}>{t('aiMemory.keyword')}</span>
+            <span style={{ flex: 1 }}>{t('aiMemory.url')}</span>
+            <span style={{ width: 60, textAlign: 'center' }}>{t('aiMemory.used')}</span>
+            <span style={{ width: 60, textAlign: 'center' }}>{t('aiMemory.source')}</span>
             <span style={{ width: 40 }} />
           </div>
           {filtered.map(m => (
@@ -93,8 +95,8 @@ export function AIMemorySettings() {
                     value={editUrl}
                     onChange={e => setEditUrl(e.target.value)}
                   />
-                  <button className="saas-btn-primary" style={{ fontSize: 11, padding: '3px 8px' }} onClick={saveEdit}>Save</button>
-                  <button className="saas-btn-secondary" style={{ fontSize: 11, padding: '3px 8px' }} onClick={() => setEditing(null)}>Cancel</button>
+                  <button className="saas-btn-primary" style={{ fontSize: 11, padding: '3px 8px' }} onClick={saveEdit}>{t('aiMemory.save')}</button>
+                  <button className="saas-btn-secondary" style={{ fontSize: 11, padding: '3px 8px' }} onClick={() => setEditing(null)}>{t('aiMemory.cancel')}</button>
                 </>
               ) : (
                 <>

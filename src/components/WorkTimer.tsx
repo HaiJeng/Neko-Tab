@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLocalStorage } from '../hooks/useLocalStorage'
+import { useTranslation } from '../i18n'
 
 function fmt(ms: number): string {
   const s = Math.floor(ms / 1000)
@@ -12,6 +13,7 @@ function fmt(ms: number): string {
 
 export function WorkTimer() {
   const [startedAt, setStartedAt] = useLocalStorage<number | null>('neko-timer-start', null)
+  const { t } = useTranslation()
 
   // Initialize elapsed directly from persisted startedAt so there's no 0 flash on reload
   const [elapsed, setElapsed] = useState<number>(() =>
@@ -52,13 +54,13 @@ export function WorkTimer() {
     <div
       className={`stat-item work-timer-item ${startedAt !== null ? 'running' : ''}`}
       onClick={toggle}
-      title={startedAt ? 'Click to stop (Ctrl+Shift+T)' : 'Click to start timer (Ctrl+Shift+T)'}
+      title={startedAt ? t('workTimer.stop') : t('workTimer.start')}
     >
       <span className="work-timer-dot">{startedAt !== null ? '●' : '◌'}</span>
-      <span className="stat-label">TIMER</span>
+      <span className="stat-label">{t('workTimer.label')}</span>
       <span className="stat-value work-timer-value">{fmt(elapsed)}</span>
       {startedAt !== null && elapsed > 0 && (
-        <button className="work-timer-reset" onClick={reset} title="Reset">✕</button>
+        <button className="work-timer-reset" onClick={reset} title={t('workTimer.reset')}>✕</button>
       )}
     </div>
   )
