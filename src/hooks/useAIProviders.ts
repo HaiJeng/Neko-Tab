@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import type { LanguageModel } from 'ai'
 import type { AIProvider, AIProviderConfig, AIAction } from '../types'
 
 const PROVIDER_DEFAULTS: Record<AIProvider, { name: string; baseUrl: string; model: string }> = {
@@ -77,6 +78,43 @@ export function useAIProviders() {
     }
   }, [])
 
+  /**
+   * Parse AI response text into AIAction[] with lenient handling:
+   * - Strips markdown code fences
+   * - Accepts bare JSON array, or object wrapped in { actions: [...] }
+   * - Wraps a single object into an array
+   * Throws with the actual snippet on failure.
+   */
+  function parseActions(raw: string): AIAction[] {
+    let cleaned = raw.trim()
+
+    // Strip markdown code fences (```json ... ```)
+    cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/, '').trim()
+
+    // Try array first
+    const arrayMatch = cleaned.match(/^\[[\s\S]*\]$/)
+    if (arrayMatch) {
+      try {
+        const parsed = JSON.parse(arrayMatch[0])
+        if (Array.isArray(parsed)) return parsed as AIAction[]
+      } catch { /* fall through */ }
+    }
+
+    // Try { actions: [...] }
+    try {
+      const obj = JSON.parse(cleaned)
+      if (obj.actions && Array.isArray(obj.actions)) return obj.actions as AIAction[]
+      if (!Array.isArray(obj)) {
+        // Single object — wrap in array
+        return [obj] as AIAction[]
+      }
+    } catch { /* fall through */ }
+
+    throw new Error(
+      `AI response was not valid JSON. Response received:\n${cleaned.slice(0, 500)}`
+    )
+  }
+
   const executeCommand = useCallback(async (
     prompt: string,
     context: { aliases: string; bookmarks: string; tabs: string; history: string; memories: string; browsingHistory?: string }
@@ -92,7 +130,6 @@ export function useAIProviders() {
     }
 
     const defaults = PROVIDER_DEFAULTS[currentActive]
-    const baseUrl = providerConfig.baseUrl || defaults.baseUrl
     const model = providerConfig.model && providerConfig.model !== 'gemini-1.5-flash' ? providerConfig.model : defaults.model
 
     const safeQuery = sanitize(prompt)
@@ -145,77 +182,54 @@ When using "save-to-journal": include a "date" field matching the date being sum
 
 Respond ONLY with a valid JSON array. No markdown, no explanation.`
 
-    let response: Response
-
-    if (currentActive === 'gemini') {
-      response = await fetch(`${baseUrl}/models/${model}:generateContent`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': providerConfig.apiKey,
-        },
-        body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt }] }] }),
-      })
-    } else if (currentActive === 'openai' || (currentActive === 'custom' && providerConfig.customFormat !== 'anthropic')) {
-      response = await fetch(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${providerConfig.apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: 'user', content: systemPrompt }],
-          temperature: 0.3,
-        }),
-      })
-    } else if (currentActive === 'anthropic' || (currentActive === 'custom' && providerConfig.customFormat === 'anthropic')) {
-      response = await fetch(`${baseUrl}/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': providerConfig.apiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 1024,
-          messages: [{ role: 'user', content: systemPrompt }],
-        }),
-      })
-    } else {
-      throw new Error(`Unknown provider: ${currentActive}`)
-    }
-
-    if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`AI API error: ${response.status} — ${error}`)
-    }
-
-    const data = await response.json()
-    let content = ''
-
     const usesAnthropicFormat = currentActive === 'anthropic' || (currentActive === 'custom' && providerConfig.customFormat === 'anthropic')
 
+    // Lazy-load the AI SDK so it stays out of the main new-tab bundle — it is only
+    // pulled in when the user actually runs an AI command.
+    const { generateText } = await import('ai')
+
+    // Resolve the AI SDK model. The SDK normalizes each provider's wire format
+    // (including Anthropic extended-thinking blocks) so we only deal with text.
+    let languageModel: LanguageModel
     if (currentActive === 'gemini') {
-      content = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+      const { createGoogleGenerativeAI } = await import('@ai-sdk/google')
+      const google = createGoogleGenerativeAI({
+        apiKey: providerConfig.apiKey,
+        ...(providerConfig.baseUrl ? { baseURL: providerConfig.baseUrl } : {}),
+      })
+      languageModel = google(model)
     } else if (usesAnthropicFormat) {
-      content = data.content?.[0]?.text || ''
+      const { createAnthropic } = await import('@ai-sdk/anthropic')
+      const anthropic = createAnthropic({
+        apiKey: providerConfig.apiKey,
+        ...(providerConfig.baseUrl ? { baseURL: providerConfig.baseUrl } : {}),
+        // Required to call the Anthropic API directly from a browser/extension context.
+        headers: { 'anthropic-dangerous-direct-browser-access': 'true' },
+      })
+      languageModel = anthropic(model)
     } else {
-      content = data.choices?.[0]?.message?.content || ''
+      // OpenAI and OpenAI-compatible custom endpoints.
+      // Use .chat() to force the Chat Completions API — the default callable uses
+      // the Responses API, which OpenAI-compatible gateways (DeepSeek, etc.) don't support.
+      const { createOpenAI } = await import('@ai-sdk/openai')
+      const openai = createOpenAI({
+        apiKey: providerConfig.apiKey,
+        ...(providerConfig.baseUrl ? { baseURL: providerConfig.baseUrl } : {}),
+      })
+      languageModel = openai.chat(model)
     }
 
-    const jsonMatch = content.match(/\[[\s\S]*\]/)
-    if (!jsonMatch) {
-      throw new Error('AI response was not valid JSON')
+    const { text } = await generateText({
+      model: languageModel,
+      prompt: systemPrompt,
+      temperature: 0.3,
+    })
+
+    if (typeof text !== 'string' || text.trim() === '') {
+      throw new Error('AI returned an empty response. Check the model name and provider configuration.')
     }
 
-    const parsed = JSON.parse(jsonMatch[0])
-    if (!Array.isArray(parsed)) {
-      throw new Error('AI response was not an array')
-    }
-    const actions = parsed as AIAction[]
-    return actions
+    return parseActions(text)
   }, [activeProvider, providers])
 
   return {

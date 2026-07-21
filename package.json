@@ -17,6 +17,10 @@
     "vite": "^5.4.0"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.16",
+    "@ai-sdk/google": "^4.0.19",
+    "@ai-sdk/openai": "^4.0.16",
+    "ai": "^7.0.32",
     "lucide-react": "^0.556.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
