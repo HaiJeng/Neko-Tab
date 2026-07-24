@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
-import type { LanguageModel } from 'ai'
+import { z } from 'zod'
+import type { LanguageModel, ModelMessage } from 'ai'
 import type { AIProvider, AIProviderConfig, AIAction } from '../types'
 
 const PROVIDER_DEFAULTS: Record<AIProvider, { name: string; baseUrl: string; model: string }> = {
@@ -16,6 +17,43 @@ function sanitize(str: string): string {
 function sanitizeLong(str: string): string {
   return str.replace(/[\x00-\x1F\x7F]/g, '').slice(0, 4000)
 }
+
+/**
+ * Tool schemas exposed to the AI model. ai-sdk validates arguments against these
+ * before invoking dispatchToolCall. Text answers are plain assistant content, not
+ * a tool — the model only calls a tool when it needs to act on the browser.
+ */
+export const AI_TOOLS = {
+  open_url: {
+    description: 'Open a single URL in a new browser tab.',
+    inputSchema: z.object({ url: z.string().url() }),
+  },
+  open_tabs: {
+    description: 'Open multiple URLs, each in its own new tab.',
+    inputSchema: z.object({ urls: z.array(z.string().url()).min(1).max(10) }),
+  },
+  open_alias: {
+    description: 'Open a saved alias by its key (user-defined shortcut).',
+    inputSchema: z.object({ key: z.string().min(1) }),
+  },
+  history_search: {
+    description: 'Search the browser history for a term and open the top match.',
+    inputSchema: z.object({ query: z.string().min(1) }),
+  },
+  remember: {
+    description: 'Save a keyword-to-URL memory so future queries know this destination.',
+    inputSchema: z.object({ keyword: z.string().min(1), url: z.string().url() }),
+  },
+  save_to_journal: {
+    description: 'Append a text summary to the daily journal.',
+    inputSchema: z.object({
+      text: z.string().min(1),
+      date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    }),
+  },
+} as const
+
+export type AIToolName = keyof typeof AI_TOOLS
 
 /**
  * Parse AI response text into AIAction[] with lenient handling:
@@ -164,6 +202,49 @@ export function useAIProviders() {
     }
   }, [])
 
+  const streamChat = useCallback(async (
+    messages: ModelMessage[],
+    context: { aliases: string; bookmarks: string; tabs: string; history: string; memories: string },
+  ) => {
+    const currentActive = activeProvider
+    if (!currentActive) throw new Error('No active AI provider configured')
+
+    const providerConfig = providers.find(p => p.provider === currentActive)
+    if (!providerConfig?.apiKey) throw new Error(`API key not set for ${currentActive}`)
+
+    const systemPrompt = `You are the user's browser assistant. Answer naturally and, when appropriate, call tools to act on the browser.
+
+Rules:
+- For "open X": if X is a known destination (from context), call open_url with its exact URL. Otherwise call open_url with your best guess and also call remember to save it.
+- For "open X and Y": call open_tabs.
+- For history questions ("what did I do yesterday"): give a 2-4 sentence summary as your text reply, cite links as plain URLs in the text, and do not call tools.
+- For "save this to journal today": call save_to_journal with the current date and the summary text.
+- If unsure, ask before acting.
+- Text replies are your natural voice. Only call tools when you need to act.
+
+Context (refer back as needed):
+<context>
+aliases: ${sanitize(context.aliases)}
+bookmarks: ${sanitize(context.bookmarks)}
+open tabs: ${sanitize(context.tabs)}
+recent history: ${sanitize(context.history)}
+known destinations:
+${sanitizeLong(context.memories)}
+</context>`
+
+    const languageModel = await resolveLanguageModel(providerConfig)
+    const { streamText } = await import('ai')
+
+    return streamText({
+      model: languageModel,
+      system: systemPrompt,
+      messages,
+      tools: AI_TOOLS,
+      temperature: 0.3,
+      maxOutputTokens: 1200,
+    })
+  }, [activeProvider, providers])
+
   const executeCommand = useCallback(async (
     prompt: string,
     context: { aliases: string; bookmarks: string; tabs: string; history: string; memories: string; browsingHistory?: string }
@@ -255,6 +336,7 @@ Respond ONLY with a valid JSON array. No markdown, no explanation.`
     removeProvider,
     setActive,
     executeCommand,
+    streamChat,
     providerDefaults: PROVIDER_DEFAULTS,
   }
 }
