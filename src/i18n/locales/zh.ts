@@ -379,7 +379,6 @@ export const zh: Record<TranslationKey, string> = {
   'aiProviders.connectionFailed': '连接失败',
   'aiProviders.noProviderConfigured': '未配置提供商',
   'aiProviders.baseUrlNotConfigured': '未配置 Base URL',
-  'aiProviders.apiReturned': 'API 返回 {status}',
   'aiProviders.usage': '用法',
   'aiProviders.usageHint': '在命令面板中输入 ! 以触发 AI 模式。',
   'aiProviders.examples': '示例：',

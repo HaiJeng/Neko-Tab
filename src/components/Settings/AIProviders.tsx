@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useAIProviders } from '../../hooks/useAIProviders'
+import { useAIProviders, resolveLanguageModel } from '../../hooks/useAIProviders'
 import type { AIProvider, AIProviderConfig } from '../../types'
 import { Key, Trash2, Plus, Check, AlertCircle } from 'lucide-react'
 import { useTranslation } from '../../i18n'
@@ -71,44 +71,16 @@ export function AIProviders() {
         throw new Error(t('aiProviders.noProviderConfigured'))
       }
 
-      const providerType = provider.provider
-      const baseUrl = provider.baseUrl || providerDefaults[providerType].baseUrl
-      if (!baseUrl) {
+      if (provider.provider === 'custom' && !provider.baseUrl) {
         throw new Error(t('aiProviders.baseUrlNotConfigured'))
       }
 
-      let response: Response
-
-      const usesAnthropicFormat = providerType === 'anthropic' || (providerType === 'custom' && provider.customFormat === 'anthropic')
-
-      if (usesAnthropicFormat) {
-        response = await fetch(`${baseUrl}/messages`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': provider.apiKey,
-            'anthropic-version': '2023-06-01',
-          },
-          body: JSON.stringify({ model: provider.model || 'claude-3-haiku-20240307', max_tokens: 1, messages: [{ role: 'user', content: 'hi' }] }),
-        })
-      } else if (providerType === 'openai' || providerType === 'custom') {
-        response = await fetch(`${baseUrl}/models`, {
-          headers: { 'Authorization': `Bearer ${provider.apiKey}` },
-        })
-      } else if (providerType === 'gemini') {
-        response = await fetch(`${baseUrl}/models`, {
-          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': provider.apiKey },
-        })
-      } else {
-        throw new Error(`Unknown provider: ${providerType}`)
-      }
-
-      if (response.ok) {
-        setTestResult({ success: true, message: t('aiProviders.connectionSuccess') })
-      } else {
-        const errorText = await response.text().catch(() => '')
-        setTestResult({ success: false, message: `${t('aiProviders.apiReturned', { status: response.status })}${errorText ? ' — ' + errorText.slice(0, 100) : ''}` })
-      }
+      // Round-trip via the same SDK path executeCommand uses, so a passing test
+      // means the real command path will work. Costs a few tokens per test.
+      const languageModel = await resolveLanguageModel(provider)
+      const { generateText } = await import('ai')
+      await generateText({ model: languageModel, prompt: 'reply with: ok', maxOutputTokens: 5 })
+      setTestResult({ success: true, message: t('aiProviders.connectionSuccess') })
     } catch (err) {
       setTestResult({ success: false, message: err instanceof Error ? err.message : t('aiProviders.connectionFailed') })
     } finally {
