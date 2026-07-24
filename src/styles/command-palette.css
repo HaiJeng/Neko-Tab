@@ -220,7 +220,10 @@
 
 /* AI command result */
 .cp-item-ai {
-  border-left: 3px solid var(--accent);
+  border-left: 3px solid var(--border);
+}
+.cp-item-ai.active {
+  border-left-color: var(--accent);
 }
 
 .cp-item-ai .cp-item-label {
@@ -373,6 +376,51 @@
   white-space: pre-wrap;
   font-family: var(--font-mono), monospace;
   word-break: break-word;
+}
+.cp-msg-content h1,
+.cp-msg-content h2,
+.cp-msg-content h3,
+.cp-msg-content h4 {
+  margin: 0;
+  font-size: inherit;
+  font-weight: 600;
+}
+.cp-msg-content p {
+  margin: 0 0 4px;
+}
+.cp-msg-content ul,
+.cp-msg-content ol {
+  margin: 0 0 4px;
+  padding-left: 16px;
+}
+.cp-msg-content li {
+  margin: 0;
+}
+.cp-msg-content code {
+  background: var(--bg-secondary);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+.cp-msg-content pre {
+  margin: 4px 0;
+  padding: 6px 8px;
+  background: var(--bg-secondary);
+  border-radius: 4px;
+  overflow-x: auto;
+}
+.cp-msg-content a {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.cp-msg-content strong {
+  font-weight: 600;
+}
+.cp-msg-content blockquote {
+  margin: 4px 0;
+  padding-left: 8px;
+  border-left: 2px solid var(--border);
+  color: var(--text-secondary);
 }
 
 .cp-msg-content.streaming::after {

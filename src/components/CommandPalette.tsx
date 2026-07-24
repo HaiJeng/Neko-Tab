@@ -14,6 +14,7 @@ import { useTranslation } from '../i18n'
 import type { TranslationKey } from '../i18n'
 import { SUPPORTED_LANGUAGES } from '../i18n'
 import type { ModelMessage } from 'ai'
+import ReactMarkdown from 'react-markdown'
 
 type ToolChip = {
   name: AIToolName
@@ -899,9 +900,15 @@ export function CommandPalette() {
                 return (
                   <div key={i} className={`cp-msg cp-msg-${m.role}`}>
                     <span className="cp-msg-role">{m.role === 'user' ? 'USER' : 'ASSISTANT'}</span>
-                    <span className={`cp-msg-content ${aiStreaming && isLastAssistant ? 'streaming' : ''}`}>
-                      {m.content}
-                    </span>
+                    {m.role === 'assistant' ? (
+                      <div className={`cp-msg-content ${aiStreaming && isLastAssistant ? 'streaming' : ''}`}>
+                        <ReactMarkdown>{m.content}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <span className={`cp-msg-content ${aiStreaming && isLastAssistant ? 'streaming' : ''}`}>
+                        {m.content}
+                      </span>
+                    )}
                     {m.toolCalls && m.toolCalls.length > 0 && (
                       <div className="cp-tool-chips" ref={chipsRef}>
                         {m.toolCalls.map((c, ci) => {
