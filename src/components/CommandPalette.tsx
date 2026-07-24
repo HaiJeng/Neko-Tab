@@ -992,7 +992,7 @@ export function CommandPalette() {
           )}
           {!isFocused && (
             <span className="cp-trigger-hint">
-              <kbd>⌘+K</kbd>
+              <kbd>{navigator.platform.includes('Mac') ? '⌘' : 'Ctrl'}+K</kbd>
               <span className="cp-trigger-sep">/</span>
               <kbd>/</kbd>
             </span>
