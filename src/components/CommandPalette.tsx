@@ -8,7 +8,7 @@ import { recordTabUsage } from '../utils/tabUsage'
 import { useOpenTabs } from '../hooks/useOpenTabs'
 import { useAIProviders, type AIToolName } from '../hooks/useAIProviders'
 import { useAIMemory } from '../hooks/useAIMemory'
-import { buildContext, fetchFrequentDestinations, dispatchToolCall } from '../utils/ai-command-parser'
+import { buildContext, fetchFrequentDestinations, fetchRecentHistory, dispatchToolCall } from '../utils/ai-command-parser'
 import { isSafeUrl } from '../utils/browser'
 import { useTranslation } from '../i18n'
 import type { TranslationKey } from '../i18n'
@@ -388,11 +388,19 @@ export function CommandPalette() {
     setSelected(0)
     setAiStreaming(true)
 
+    // Pull recent history (last 48h) at send time so questions like
+    // "what did I do yesterday" get real data — historyResults is filtered by
+    // the current query and will be empty for open-ended asks.
+    const recentHistory = await fetchRecentHistory(48, 40)
+    const historyForContext = recentHistory.length > 0
+      ? recentHistory
+      : historyResults.slice(0, 10).map(h => ({ title: h.label, url: h.url, ts: h.ts }))
+
     const context = buildContext(
       aliases,
       categories,
       recent.slice(0, 10).map(r => ({ title: r.label, url: r.url })),
-      historyResults.slice(0, 10).map(h => ({ title: h.label, url: h.url })),
+      historyForContext,
       memories,
     )
 

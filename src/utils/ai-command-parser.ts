@@ -78,6 +78,28 @@ export async function dispatchToolCall(
   return { status: 'error', label: name, error: 'unknown tool' }
 }
 
+/**
+ * Fetch recent history entries (default: last 24h) for AI context. Unlike
+ * `chrome.history.search` in the palette (which filters by the current query),
+ * this returns everything the user visited in the window so the AI can answer
+ * "what did I do yesterday" without being handed an empty list.
+ */
+export async function fetchRecentHistory(hours = 24, max = 40): Promise<{ title: string; url: string; ts: number }[]> {
+  if (typeof chrome === 'undefined' || !chrome.history) return []
+  try {
+    const startTime = Date.now() - hours * 60 * 60 * 1000
+    const items = await new Promise<chrome.history.HistoryItem[]>(resolve =>
+      chrome.history.search({ text: '', maxResults: max, startTime }, resolve),
+    )
+    return items
+      .filter(i => i.url && !i.url.startsWith('chrome://') && !i.url.startsWith('chrome-extension://'))
+      .map(i => ({ title: i.title || i.url!, url: i.url!, ts: i.lastVisitTime || 0 }))
+      .sort((a, b) => b.ts - a.ts)
+  } catch {
+    return []
+  }
+}
+
 export async function fetchFrequentDestinations(): Promise<AIMemory[]> {
   if (typeof chrome === 'undefined' || !chrome.history) return []
 
@@ -131,11 +153,21 @@ function strip(str: string): string {
   return str.replace(/[\x00-\x1F\x7F]/g, '').slice(0, 200)
 }
 
+function friendlyTimeAgo(ts: number): string {
+  const diffMin = Math.round((Date.now() - ts) / 60000)
+  if (diffMin < 1) return 'just now'
+  if (diffMin < 60) return `${diffMin}m ago`
+  const diffH = Math.round(diffMin / 60)
+  if (diffH < 24) return `${diffH}h ago`
+  const diffD = Math.round(diffH / 24)
+  return `${diffD}d ago`
+}
+
 export function buildContext(
   aliases: { key: string; url: string }[],
   categories: { name: string; bookmarks: { title: string; url: string }[] }[],
   tabs: { title: string; url: string }[],
-  history: { title: string; url: string }[],
+  history: { title: string; url: string; ts?: number }[],
   memories: AIMemory[] = [],
 ): { aliases: string; bookmarks: string; tabs: string; history: string; memories: string } {
   return {
@@ -144,7 +176,10 @@ export function buildContext(
       c.bookmarks.map(b => `${b.title}: ${b.url}`)
     ).map(s => strip(s)).join('; '),
     tabs: tabs.map(t => strip(t.title)).join(', '),
-    history: history.map(h => strip(h.title)).join(', '),
+    history: history.map(h => {
+      const ago = h.ts ? friendlyTimeAgo(h.ts) : ''
+      return `${ago ? `[${ago}] ` : ''}${strip(h.title)}`
+    }).join('; '),
     memories: memories.map(m => `${m.keyword} -> ${m.url}`).join('\n'),
   }
 }

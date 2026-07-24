@@ -191,7 +191,7 @@ Context (refer back as needed):
 aliases: ${sanitize(context.aliases)}
 bookmarks: ${sanitize(context.bookmarks)}
 open tabs: ${sanitize(context.tabs)}
-recent history: ${sanitize(context.history)}
+recent history: ${sanitizeLong(context.history)}
 known destinations:
 ${sanitizeLong(context.memories)}
 </context>`
