@@ -24,8 +24,33 @@ export function AIProviders() {
   const [customFormat, setCustomFormat] = useState<'openai' | 'anthropic'>('openai')
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
-  const [editingKey, setEditingKey] = useState<AIProvider | null>(null)
-  const [editKeyValue, setEditKeyValue] = useState('')
+  const [editing, setEditing] = useState<AIProvider | null>(null)
+  const [editDraft, setEditDraft] = useState<AIProviderConfig | null>(null)
+
+  const startEdit = (p: AIProviderConfig) => {
+    setEditing(p.provider)
+    setEditDraft({ ...p })
+  }
+
+  const cancelEdit = () => {
+    setEditing(null)
+    setEditDraft(null)
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editDraft) return
+    if (!editDraft.apiKey.trim()) return
+    if (editDraft.provider === 'custom' && !editDraft.baseUrl?.trim()) return
+
+    await saveProvider({
+      ...editDraft,
+      apiKey: editDraft.apiKey.trim(),
+      name: editDraft.name.trim() || providerDefaults[editDraft.provider].name,
+      model: editDraft.model?.trim() || undefined,
+      baseUrl: editDraft.baseUrl?.trim() || undefined,
+    })
+    cancelEdit()
+  }
 
   const handleAddProvider = async () => {
     if (!apiKey.trim()) return
@@ -49,16 +74,6 @@ export function AIProviders() {
     if (!activeProvider) {
       await setActive(newProvider)
     }
-  }
-
-  const handleUpdateKey = async (provider: AIProvider) => {
-    if (!editKeyValue.trim()) return
-    const existing = providers.find(p => p.provider === provider)
-    if (!existing) return
-
-    await saveProvider({ ...existing, apiKey: editKeyValue.trim() })
-    setEditingKey(null)
-    setEditKeyValue('')
   }
 
   const handleTestProvider = async () => {
@@ -167,51 +182,98 @@ export function AIProviders() {
         ) : (
           <div className="provider-list">
             {providers.map(provider => (
-              <div key={provider.provider} className="provider-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontWeight: 500 }}>{provider.name}</span>
-                    <span style={{ fontSize: 12, opacity: 0.6 }}>
-                      {provider.model || providerDefaults[provider.provider].model}
-                    </span>
-                  </div>
-                  {editingKey === provider.provider ? (
-                    <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
-                      <input
-                        type="password"
-                        className="saas-input"
-                        style={{ fontSize: 12, padding: '4px 8px' }}
-                        value={editKeyValue}
-                        onChange={e => setEditKeyValue(e.target.value)}
-                        autoComplete="off"
-                      />
-                      <button className="saas-btn-primary" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => handleUpdateKey(provider.provider)}>{t('aiProviders.saveKey')}</button>
-                      <button className="saas-btn-secondary" style={{ fontSize: 11, padding: '4px 8px' }} onClick={() => setEditingKey(null)}>{t('aiProviders.cancel')}</button>
+              <div key={provider.provider} className="provider-item" style={{ padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontWeight: 500 }}>{provider.name}</span>
+                      <span style={{ fontSize: 12, opacity: 0.6 }}>
+                        {provider.model || providerDefaults[provider.provider].model}
+                      </span>
                     </div>
-                  ) : (
-                    <span
-                      style={{ fontSize: 11, opacity: 0.5, cursor: 'pointer', fontFamily: 'monospace' }}
-                      onClick={() => { setEditingKey(provider.provider); setEditKeyValue('') }}
-                      title={t('aiProviders.changeKey')}
-                    >
+                    <span style={{ fontSize: 11, opacity: 0.5, fontFamily: 'monospace' }}>
                       {maskKey(provider.apiKey)}
                     </span>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexShrink: 0, marginLeft: 12 }}>
-                  {activeProvider === provider.provider ? (
-                    <span style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
-                      <Check size={14} /> {t('aiProviders.active')}
-                    </span>
-                  ) : (
-                    <button className="saas-btn-secondary" onClick={() => setActive(provider.provider)} style={{ fontSize: 12 }}>
-                      {t('aiProviders.activate')}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexShrink: 0, marginLeft: 12 }}>
+                    {activeProvider === provider.provider ? (
+                      <span style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12 }}>
+                        <Check size={14} /> {t('aiProviders.active')}
+                      </span>
+                    ) : (
+                      <button className="saas-btn-secondary" onClick={() => setActive(provider.provider)} style={{ fontSize: 12 }}>
+                        {t('aiProviders.activate')}
+                      </button>
+                    )}
+                    <button
+                      className="saas-btn-secondary"
+                      onClick={() => (editing === provider.provider ? cancelEdit() : startEdit(provider))}
+                      style={{ fontSize: 12 }}
+                    >
+                      {editing === provider.provider ? t('aiProviders.cancel') : t('aiProviders.edit')}
                     </button>
-                  )}
-                  <button className="saas-btn-icon" onClick={() => removeProvider(provider.provider)}>
-                    <Trash2 size={14} />
-                  </button>
+                    <button className="saas-btn-icon" onClick={() => removeProvider(provider.provider)}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </div>
+
+                {editing === provider.provider && editDraft && (
+                  <div style={{ marginTop: 10, padding: 12, background: 'rgba(255,255,255,0.05)', borderRadius: 8 }}>
+                    <input
+                      type="text"
+                      className="saas-input"
+                      placeholder={t('aiProviders.namePlaceholder')}
+                      value={editDraft.name}
+                      onChange={e => setEditDraft({ ...editDraft, name: e.target.value })}
+                      style={{ marginBottom: 8 }}
+                    />
+                    <input
+                      type="password"
+                      className="saas-input"
+                      placeholder={t('aiProviders.apiKeyPlaceholder')}
+                      value={editDraft.apiKey}
+                      onChange={e => setEditDraft({ ...editDraft, apiKey: e.target.value })}
+                      style={{ marginBottom: 8 }}
+                      autoComplete="off"
+                    />
+                    <input
+                      type="text"
+                      className="saas-input"
+                      placeholder={t('aiProviders.modelPlaceholder')}
+                      value={editDraft.model ?? ''}
+                      onChange={e => setEditDraft({ ...editDraft, model: e.target.value })}
+                      style={{ marginBottom: 8 }}
+                    />
+                    {editDraft.provider === 'custom' && (
+                      <>
+                        <div className="saas-segmented-control" style={{ marginBottom: 8 }}>
+                          {(['openai', 'anthropic'] as const).map(f => (
+                            <button
+                              key={f}
+                              className={`saas-segment ${(editDraft.customFormat ?? 'openai') === f ? 'active' : ''}`}
+                              onClick={() => setEditDraft({ ...editDraft, customFormat: f })}
+                            >
+                              {f === 'openai' ? t('aiProviders.formatOpenai') : t('aiProviders.formatAnthropic')}
+                            </button>
+                          ))}
+                        </div>
+                        <input
+                          type="text"
+                          className="saas-input"
+                          placeholder={(editDraft.customFormat ?? 'openai') === 'anthropic' ? t('aiProviders.baseUrlAnthropic') : t('aiProviders.baseUrlOpenai')}
+                          value={editDraft.baseUrl ?? ''}
+                          onChange={e => setEditDraft({ ...editDraft, baseUrl: e.target.value })}
+                          style={{ marginBottom: 8 }}
+                        />
+                      </>
+                    )}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="saas-btn-primary" onClick={handleSaveEdit}>{t('aiProviders.save')}</button>
+                      <button className="saas-btn-secondary" onClick={cancelEdit}>{t('aiProviders.cancel')}</button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
