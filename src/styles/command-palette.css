@@ -278,6 +278,17 @@
   z-index: 200;
 }
 
+/* focused 时把整个 center-section 拉到书签之上，避免浮层被兄弟遮挡 */
+.center-section:has(.cp-inline.focused) {
+  position: relative;
+  z-index: 200;
+}
+
+.content-section {
+  position: relative;
+  z-index: 1;
+}
+
 .cp-chat {
   margin-bottom: 6px;
   border: 1px solid var(--border, #353A3E);
