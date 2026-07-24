@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { z } from 'zod'
 import type { LanguageModel, ModelMessage } from 'ai'
-import type { AIProvider, AIProviderConfig, AIAction } from '../types'
+import type { AIProvider, AIProviderConfig } from '../types'
 
 const PROVIDER_DEFAULTS: Record<AIProvider, { name: string; baseUrl: string; model: string }> = {
   openai: { name: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
@@ -56,45 +56,8 @@ export const AI_TOOLS = {
 export type AIToolName = keyof typeof AI_TOOLS
 
 /**
- * Parse AI response text into AIAction[] with lenient handling:
- * - Strips markdown code fences
- * - Accepts bare JSON array, or object wrapped in { actions: [...] }
- * - Wraps a single object into an array
- * Throws with the actual snippet on failure.
- */
-function parseActions(raw: string): AIAction[] {
-  let cleaned = raw.trim()
-
-  // Strip markdown code fences (```json ... ```)
-  cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/, '').trim()
-
-  // Try array first
-  const arrayMatch = cleaned.match(/^\[[\s\S]*\]$/)
-  if (arrayMatch) {
-    try {
-      const parsed = JSON.parse(arrayMatch[0])
-      if (Array.isArray(parsed)) return parsed as AIAction[]
-    } catch { /* fall through */ }
-  }
-
-  // Try { actions: [...] }
-  try {
-    const obj = JSON.parse(cleaned)
-    if (obj.actions && Array.isArray(obj.actions)) return obj.actions as AIAction[]
-    if (!Array.isArray(obj)) {
-      // Single object — wrap in array
-      return [obj] as AIAction[]
-    }
-  } catch { /* fall through */ }
-
-  throw new Error(
-    `AI response was not valid JSON. Response received:\n${cleaned.slice(0, 500)}`
-  )
-}
-
-/**
  * Resolve a stored AIProviderConfig into an initialized AI SDK LanguageModel.
- * Shared by executeCommand and the Settings connection test — one place decides
+ * Shared by streamChat and the Settings connection test — one place decides
  * which SDK to load, how to authenticate, and which wire format to speak.
  */
 export async function resolveLanguageModel(config: AIProviderConfig): Promise<LanguageModel> {
@@ -245,89 +208,6 @@ ${sanitizeLong(context.memories)}
     })
   }, [activeProvider, providers])
 
-  const executeCommand = useCallback(async (
-    prompt: string,
-    context: { aliases: string; bookmarks: string; tabs: string; history: string; memories: string; browsingHistory?: string }
-  ): Promise<AIAction[]> => {
-    const currentActive = activeProvider
-    if (!currentActive) {
-      throw new Error('No active AI provider configured')
-    }
-
-    const providerConfig = providers.find(p => p.provider === currentActive)
-    if (!providerConfig?.apiKey) {
-      throw new Error(`API key not set for ${currentActive}`)
-    }
-
-    const safeQuery = sanitize(prompt)
-
-    const hasBrowsingHistory = context.browsingHistory && context.browsingHistory.length > 0
-    const historySection = hasBrowsingHistory
-      ? `browsing history (with timestamps):\n${sanitizeLong(context.browsingHistory!)}`
-      : `recent history: ${sanitize(context.history)}`
-
-    const systemPrompt = `You are a command interpreter. Given the user's context and request, respond with a JSON array of actions.
-
-When the user asks about their browsing history (e.g. "what did I do yesterday", "summarize May 30"), examine the browsing history context and return an "answer" action with a concise 2-4 sentence summary and up to 5 relevant links as chips.
-
-When the user says "open X", check the known destinations first. If X matches a known destination, use its exact URL. For example:
-- "open slack" → {"type": "open_url", "value": "https://slack.com"}
-- "open slack and discord" → {"type": "open_tabs", "value": "https://slack.com, https://discord.com"}
-- "open gmail" → {"type": "open_url", "value": "https://mail.google.com"}
-- "open youtube" → {"type": "open_url", "value": "https://youtube.com"}
-- "open google docs my resume" → {"type": "search", "value": "my resume google docs"}
-
-If you open a URL that isn't in known destinations, append a remember action so the system learns it.
-
-Only use "search" when you genuinely don't know the URL. Prefer "open_url" for known websites.
-
-Context:
-<context>
-aliases: ${sanitize(context.aliases)}
-bookmarks: ${sanitize(context.bookmarks)}
-open tabs: ${sanitize(context.tabs)}
-${historySection}
-known destinations:
-${sanitize(context.memories)}
-</context>
-
-User request:
-<user_query>${safeQuery}</user_query>
-
-Available actions:
-- {"type": "open_url", "value": "<full url>"} — navigate to a URL
-- {"type": "search", "value": "<search query>"} — Google search (only when URL is unknown)
-- {"type": "open_tabs", "value": "<url1>, <url2>, ..."} — open multiple URLs in new tabs
-- {"type": "alias", "value": "<alias key>"} — use a saved alias
-- {"type": "history", "value": "<search term for chrome history>"} — search browser history
-- {"type": "remember", "value": "<keyword>", "url": "<full url>"} — save a new memory mapping
-- {"type": "answer", "value": "<summary text>", "urls": [{"label": "<short label>", "url": "<full url>"}]} — display a text answer with link chips. Keep urls array to 5 items max.
-- {"type": "save-to-journal", "value": "<text to save>", "date": "<YYYY-MM-DD>"} — save a summary to the daily journal (use date from the user's request)
-
-When using "answer": keep summaries to 2-4 sentences. Label links with the page title or domain name.
-When using "save-to-journal": include a "date" field matching the date being summarized.
-
-Respond ONLY with a valid JSON array. No markdown, no explanation.`
-
-    const languageModel = await resolveLanguageModel(providerConfig)
-
-    const { generateText } = await import('ai')
-    const { text } = await generateText({
-      model: languageModel,
-      prompt: systemPrompt,
-      temperature: 0.3,
-      // Ceiling for a JSON action array. Cheap guard against a bad model or
-      // runaway prompt burning tokens and holding the UI open.
-      maxOutputTokens: 800,
-    })
-
-    if (typeof text !== 'string' || text.trim() === '') {
-      throw new Error('AI returned an empty response. Check the model name and provider configuration.')
-    }
-
-    return parseActions(text)
-  }, [activeProvider, providers])
-
   return {
     providers,
     activeProvider,
@@ -335,7 +215,6 @@ Respond ONLY with a valid JSON array. No markdown, no explanation.`
     saveProvider,
     removeProvider,
     setActive,
-    executeCommand,
     streamChat,
     providerDefaults: PROVIDER_DEFAULTS,
   }
