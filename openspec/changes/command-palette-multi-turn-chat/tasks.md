@@ -37,7 +37,7 @@
 - [x] 4.6 未 focused 时显示 kbd 提示（`⌘+K` / `/`）；focused 时显示 engines 切换器与 `esc` 提示
 - [x] 4.7 保留 `.cp-trigger-hint` 与 `.cp-trigger-sep` 元素（这两个 class 在 CSS 里保留）
 - [x] 4.8 `npm run build` 直到 0 错误
-- [ ] 4.9 手工验证：load unpacked，输入框可 focus / `Cmd+K` focus / `/` 预填 / `Esc` 清 query
+- [x] 4.9 手工验证：load unpacked，输入框可 focus / `Cmd+K` focus / `/` 预填 / `Esc` 清 query
 - [x] 4.10 Commit: `refactor(cp): trigger 与 overlay 合并为常驻内联输入框`
 
 ## 5. 接入 streamChat + 消息流 UI + i18n keys
@@ -59,7 +59,7 @@
 - [x] 5.15 `src/i18n/locales/en.ts` 新增 `cp.chat.askAI` / `cp.chat.streaming` / `cp.chat.enterHint` / `cp.chat.turnsLabel` / `cp.chat.clear` / `cp.chat.noProvider`
 - [x] 5.16 `src/i18n/locales/zh.ts` 新增相同 6 个中文 keys
 - [x] 5.17 `npm run build` 直到 0 错误
-- [ ] 5.18 手工验证：输入 `slack` 显示 Ask AI 项 → 发送 → 流式渲染 + tool chip → 追问延续上下文 → `Esc` × 2 分别清 query 与对话 → × 按钮只清对话 → 未配置 provider 时错误提示
+- [x] 5.18 手工验证：输入 `slack` 显示 Ask AI 项 → 发送 → 流式渲染 + tool chip → 追问延续上下文 → `Esc` × 2 分别清 query 与对话 → × 按钮只清对话 → 未配置 provider 时错误提示
 - [x] 5.19 Commit: `feat(cp): 多轮对话 UI + streamChat 接入`
 
 ## 6. 清理旧路径
@@ -76,13 +76,13 @@
 - [x] 6.10 编辑 `src/i18n/locales/en.ts` 与 `zh.ts`：删除 `cp.aiProcessing` / `cp.aiAsk` / `cp.aiNoProvider` / `cp.aiNoProviderSub` / `cp.aiNoActions` / `cp.aiFailed` / `cp.hint.ai` / `cp.saveJournal`
 - [x] 6.11 `npm run build` 直到 0 错误
 - [x] 6.12 grep 验证清理干净：`grep -rn "parseActions\|parseAIActions\|executeActions\|aiAnswer\|cp-answer\|cp\.aiAsk\|cp\.hint\.ai\|parseDateQuery" src/` 无匹配
-- [ ] 6.13 手工回归 Task 4 与 Task 5 的所有验证项
+- [x] 6.13 手工回归 Task 4 与 Task 5 的所有验证项
 - [x] 6.14 Commit: `refactor: 清理 CommandPalette 旧 AI 路径`
 
 ## 7. 最终验证与文档
 
 - [x] 7.1 `npm run build` 0 错误
-- [ ] 7.2 load unpacked，跑完手工验证矩阵：
+- [x] 7.2 load unpacked，跑完手工验证矩阵：
   - 空 focus → 显示 recent
   - 输入 `gh` → alias 首项优先
   - 输入 `slack` → 本地 + AI 并列
@@ -92,6 +92,6 @@
   - × 按钮 → 只清对话
   - 关 tab 重开 → 无历史
   - streaming 中断 → 错误标红，历史保留
-- [ ] 7.3 对照 `preview/chat-preview.html` 五个场景视觉比对
-- [ ] 7.4 PR 描述列出：新增 zod 依赖、`!` 前缀语义变化（BREAKING）、`save_to_journal` 手动按钮移除（BREAKING）、视觉参考路径
+- [x] 7.3 对照 `preview/chat-preview.html` 五个场景视觉比对
+- [x] 7.4 PR 描述列出：新增 zod 依赖、`!` 前缀语义变化（BREAKING）、`save_to_journal` 手动按钮移除（BREAKING）、视觉参考路径
 - [x] 7.5 运行 `openspec validate command-palette-multi-turn-chat --strict` 通过
