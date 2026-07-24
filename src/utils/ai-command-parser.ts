@@ -1,5 +1,92 @@
 import type { AIAction, AIMemory } from '../types'
+import type { AIToolName } from '../hooks/useAIProviders'
 import { isSafeUrl } from './browser'
+
+export type ToolCallResult =
+  | { status: 'done'; label: string }
+  | { status: 'error'; label: string; error: string }
+
+export type JournalWriter = (updater: (prev: Record<string, string>) => Record<string, string>) => void
+export type MemoryWriter = (keyword: string, url: string, source: 'ai') => Promise<void> | void
+export type AliasLookup = (key: string) => string | undefined
+
+/**
+ * Execute one tool call from the ai-sdk stream. Called synchronously as the
+ * stream emits `tool-call` chunks; the caller renders the return value as a chip.
+ */
+export async function dispatchToolCall(
+  name: AIToolName,
+  args: Record<string, unknown>,
+  deps: {
+    saveMemory: MemoryWriter
+    setJournal: JournalWriter
+    resolveAlias: AliasLookup
+  },
+): Promise<ToolCallResult> {
+  try {
+    switch (name) {
+      case 'open_url': {
+        const url = String(args.url)
+        if (!isSafeUrl(url)) return { status: 'error', label: url, error: 'unsafe url' }
+        if (typeof chrome !== 'undefined' && chrome.tabs) chrome.tabs.create({ url })
+        else window.open(url, '_blank')
+        return { status: 'done', label: url.replace(/^https?:\/\//, '').slice(0, 40) }
+      }
+      case 'open_tabs': {
+        const raw = args.urls as string[]
+        const urls = raw.filter(u => typeof u === 'string' && isSafeUrl(u))
+        if (urls.length === 0) return { status: 'error', label: 'open_tabs', error: 'no safe urls' }
+        if (typeof chrome !== 'undefined' && chrome.tabs) {
+          for (const url of urls) chrome.tabs.create({ url })
+        } else {
+          for (const url of urls) window.open(url, '_blank')
+        }
+        return { status: 'done', label: `${urls.length} tabs` }
+      }
+      case 'open_alias': {
+        const key = String(args.key)
+        const url = deps.resolveAlias(key)
+        if (!url || !isSafeUrl(url)) return { status: 'error', label: key, error: 'alias not found' }
+        if (typeof chrome !== 'undefined' && chrome.tabs) chrome.tabs.create({ url })
+        else window.open(url, '_blank')
+        return { status: 'done', label: `${key} → ${url.replace(/^https?:\/\//, '').slice(0, 30)}` }
+      }
+      case 'history_search': {
+        if (typeof chrome === 'undefined' || !chrome.history) {
+          return { status: 'error', label: String(args.query), error: 'history unavailable' }
+        }
+        const query = String(args.query)
+        const items = await new Promise<chrome.history.HistoryItem[]>(resolve =>
+          chrome.history.search({ text: query, maxResults: 1 }, resolve),
+        )
+        const top = items[0]
+        if (!top?.url || !isSafeUrl(top.url)) return { status: 'error', label: query, error: 'no match' }
+        if (chrome.tabs) chrome.tabs.create({ url: top.url })
+        return { status: 'done', label: (top.title || top.url).slice(0, 40) }
+      }
+      case 'remember': {
+        const keyword = String(args.keyword)
+        const url = String(args.url)
+        if (!isSafeUrl(url)) return { status: 'error', label: keyword, error: 'unsafe url' }
+        await deps.saveMemory(keyword, url, 'ai')
+        return { status: 'done', label: `${keyword} → ${url.replace(/^https?:\/\//, '').slice(0, 30)}` }
+      }
+      case 'save_to_journal': {
+        const text = String(args.text)
+        const date = String(args.date)
+        deps.setJournal(prev => {
+          const existing = prev[date] || ''
+          const sep = existing ? '\n\n' : ''
+          return { ...prev, [date]: existing + sep + `--- AI ---\n${text}` }
+        })
+        return { status: 'done', label: date }
+      }
+    }
+  } catch (e) {
+    return { status: 'error', label: name, error: e instanceof Error ? e.message : String(e) }
+  }
+  return { status: 'error', label: name, error: 'unknown tool' }
+}
 
 const VALID_TYPES = new Set(['open_url', 'search', 'alias', 'open_tabs', 'history', 'remember', 'custom', 'answer', 'save-to-journal'])
 
