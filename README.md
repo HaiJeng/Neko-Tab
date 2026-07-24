@@ -28,7 +28,7 @@ Press `Ctrl+K` or `/` to open the unified command palette. It replaces the tradi
 
 ### AI Command Interpreter
 
-Type `!` in the command palette to trigger AI mode. Powered by your choice of provider (OpenAI, Anthropic, Gemini, or custom API).
+Type `!` in the command palette to trigger AI mode. Powered by **Vercel AI SDK** with support for OpenAI, Anthropic, Google Gemini, or any OpenAI/Anthropic-compatible API.
 
 - **Natural language navigation** — `! open slack and discord` opens both in new tabs
 - **Smart URL resolution** — prefers your most-visited URLs from browser history
@@ -36,6 +36,8 @@ Type `!` in the command palette to trigger AI mode. Powered by your choice of pr
 - **Browsing History Q&A** — ask `! what did I do yesterday` or `! summarize last week` — the AI fetches your Chrome history for that period and returns a concise summary with clickable link chips
 - **Save to journal** — each AI summary includes a **Save to journal** button that writes it to the scratchpad journal with the correct date stamp
 - **Supported date queries** — `today`, `yesterday`, `last week`, `this month`, specific dates (`May 30`, `june 1`), and day names (`Monday`)
+- **Editable providers** — configured AI providers can be edited anytime: update name, API key, model, base URL, and wire format
+- **Custom provider format** — custom endpoints support both OpenAI and Anthropic message formats
 - **View and manage** learned mappings in **Settings → AI → AI Memory**
 
 ### AI Memory
@@ -47,9 +49,13 @@ The AI learns from your browsing patterns over time:
 - **AI suggestions** — the AI can propose new memory mappings when it opens unfamiliar services
 - **Settings UI** — view, edit, search, and delete learned memories in **Settings → AI**
 
+### Internationalization
+
+Full UI translation across English and 简体中文. The extension auto-detects the browser's preferred language on first launch (matches on the primary subtag, e.g. `zh-CN` → `zh`), and the choice is persisted in settings. Switch anytime from **Settings → Preferences → Language**.
+
 ### Theming
 
-22+ professionally crafted themes across three categories:
+23 professionally crafted themes across three categories:
 
 - **Color**: Carbon, Paper, Nord, Solarized, Matrix, Dracula, Monokai, Gruvbox, Tokyo Night, Catppuccin, One Dark, Rosé Pine, Everforest, ChatGPT, Claude
 - **Animated**: Cyberpunk, Aurora, Synthwave, Vaporwave
@@ -203,9 +209,9 @@ Without credentials, the extension runs normally — just without Calendar suppo
 
 Open the gear icon (top-right) to access:
 
-- **Appearance** — theme picker with live preview, font chooser (12 curated monospace fonts)
+- **Appearance** — theme picker (23 themes) with live preview, font chooser (12 curated monospace fonts)
 - **ASCII Art** — image-to-ASCII converter, custom art editor, or OS-specific art (Windows/Mac/Linux)
-- **Preferences** — name, clock format (12/24h), display toggles (clock, greeting, status bar, tab counter, etc.)
+- **Preferences** — name, language (English/中文), clock format (12/24h), display toggles (clock, greeting, status bar, tab counter, etc.)
 - **Widgets** — background image with dim/blur controls, daily goal, GitHub streak (set username)
 - **AI** — configure AI providers (OpenAI, Anthropic, Gemini, custom API), manage learned URL memories
 - **Aliases** — define short URL aliases for the command palette
@@ -244,6 +250,7 @@ No analytics, no tracking, no external servers — except searches you explicitl
 
 - React + TypeScript
 - Vite
+- Vercel AI SDK (OpenAI, Anthropic, Google Gemini, custom providers)
 - Lucide React (icons)
 - JetBrains Mono (default font), 11 more via lazy Google Fonts loading
 
