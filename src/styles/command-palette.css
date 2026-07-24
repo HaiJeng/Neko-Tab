@@ -53,12 +53,25 @@
   max-width: 520px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
   z-index: 100;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* has-bg 模式：悬浮层需要 backdrop-filter 才能读得清 */
+.has-bg .cp-results {
+  background: rgba(20, 20, 20, 0.92);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.has-bg.paper .cp-results {
+  background: rgba(245, 245, 245, 0.92);
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
 .cp-item {
