@@ -19,6 +19,7 @@ type ToolChip = {
   name: AIToolName
   label: string
   status: 'pending' | 'done' | 'error'
+  urls?: string[]
 }
 
 type ChatMessage = {
@@ -257,11 +258,14 @@ export function CommandPalette() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [aiStreaming, setAiStreaming] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
+  const pendingIdRef = useRef<string | null>(null)
+  const [pendingId, setPendingId] = useState<string | null>(null)
   const [, setJournal] = useLocalStorage<Record<string, string>>('neko-journal', {})
   const fetchedRef = useRef(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
   const chatRef = useRef<HTMLDivElement>(null)
+  const chipsRef = useRef<HTMLDivElement>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout>>()
 
   useEffect(() => {
@@ -423,8 +427,9 @@ export function CommandPalette() {
           setMessages(prev => {
             const last = prev[prev.length - 1]
             if (!last || last.role !== 'assistant') return prev
+            const outcomeUrls = outcome.status === 'done' ? outcome.urls : undefined
             const updated = (last.toolCalls || []).map((c, i, arr) =>
-              i === arr.length - 1 ? { ...c, status: outcome.status, label: outcome.label } : c,
+              i === arr.length - 1 ? { ...c, status: outcome.status, label: outcome.label, urls: outcomeUrls } : c,
             )
             return [...prev.slice(0, -1), { ...last, toolCalls: updated }]
           })
@@ -763,7 +768,9 @@ export function CommandPalette() {
     return out
   }, [query, categories, aliases, engine, settings.theme, settings.font, settings.clockFormat, settings.language, recent, historyResults, showToast, setSettings, setRecent, setDailyGoal, setScratchpad, tabs, activeProvider, aiStreaming, sendChat, tr])
 
-  useEffect(() => { setSelected(0) }, [query])
+  useEffect(() => { setSelected(0); pendingIdRef.current = null; setPendingId(null) }, [query])
+
+  useEffect(() => { pendingIdRef.current = null; setPendingId(null) }, [selected])
 
   useEffect(() => {
     if (!resultsRef.current) return
@@ -808,16 +815,36 @@ export function CommandPalette() {
         setQuery('')
         return
       }
+      if (pendingIdRef.current !== r.id) {
+        pendingIdRef.current = r.id
+        setPendingId(r.id)
+        return
+      }
       void recordTabUsage()
       addRecent(r.label, r.url)
       window.location.href = r.url
     }
     setQuery('')
+    pendingIdRef.current = null
+    setPendingId(null)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown' || (e.ctrlKey && e.code === 'KeyN')) { e.preventDefault(); setSelected(s => Math.min(s + 1, results.length - 1)) }
-    if (e.key === 'ArrowUp'   || (e.ctrlKey && e.code === 'KeyP')) { e.preventDefault(); setSelected(s => Math.max(s - 1, 0)) }
+    if (e.key === 'ArrowUp'   || (e.ctrlKey && e.code === 'KeyP')) {
+      // At top of results list with chat chips visible → jump into chips
+      if (selected === 0 && messages.length > 0) {
+        const chips = chipsRef.current?.querySelectorAll<HTMLButtonElement>('button.cp-tool-chip.clickable')
+        const last = chips?.[chips.length - 1]
+        if (last) {
+          e.preventDefault()
+          last.focus()
+          return
+        }
+      }
+      e.preventDefault()
+      setSelected(s => Math.max(s - 1, 0))
+    }
     // Tab autocompletes command suggestions
     if (e.key === 'Tab' && results[selected]?.type === 'command' && !results[selected]?.action) {
       e.preventDefault()
@@ -868,13 +895,62 @@ export function CommandPalette() {
                       {m.content}
                     </span>
                     {m.toolCalls && m.toolCalls.length > 0 && (
-                      <div className="cp-tool-chips">
-                        {m.toolCalls.map((c, ci) => (
-                          <span key={ci} className={`cp-tool-chip ${c.status === 'pending' ? 'pending' : ''} ${c.status === 'error' ? 'error' : ''}`}>
-                            <span className="dot" />
-                            {c.name} · {c.label}
-                          </span>
-                        ))}
+                      <div className="cp-tool-chips" ref={chipsRef}>
+                        {m.toolCalls.map((c, ci) => {
+                          const clickable = c.status === 'done' && c.urls && c.urls.length > 0
+                          const onChipActivate = clickable ? () => {
+                            if (typeof chrome !== 'undefined' && chrome.tabs) {
+                              for (const url of c.urls!) chrome.tabs.create({ url })
+                            } else {
+                              for (const url of c.urls!) window.open(url, '_blank')
+                            }
+                          } : undefined
+                          const onChipKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+                            if (e.key === 'ArrowDown') {
+                              e.preventDefault()
+                              const all = chipsRef.current?.querySelectorAll<HTMLButtonElement>('button.cp-tool-chip.clickable')
+                              if (all) {
+                                const idx = Array.from(all).indexOf(e.currentTarget)
+                                if (idx < all.length - 1) all[idx + 1].focus()
+                                else inputRef.current?.focus()
+                              }
+                              return
+                            }
+                            if (e.key === 'ArrowUp') {
+                              e.preventDefault()
+                              const all = chipsRef.current?.querySelectorAll<HTMLButtonElement>('button.cp-tool-chip.clickable')
+                              if (all) {
+                                const idx = Array.from(all).indexOf(e.currentTarget)
+                                if (idx > 0) all[idx - 1].focus()
+                                else inputRef.current?.focus()
+                              }
+                              return
+                            }
+                          }
+                          return clickable ? (
+                            <button
+                              key={ci}
+                              type="button"
+                              className={`cp-tool-chip clickable ${c.status === 'pending' ? 'pending' : ''}`}
+                              onMouseDown={e => e.preventDefault()}
+                              onClick={() => onChipActivate?.()}
+                              onKeyDown={onChipKeyDown}
+                              title={tr('cp.chip.clickToOpen')}
+                            >
+                              <span className="dot" />
+                              {c.name} · {c.label}
+                              <span className="cp-chip-arrow">↗</span>
+                            </button>
+                          ) : (
+                            <span
+                              key={ci}
+                              className={`cp-tool-chip ${c.status === 'pending' ? 'pending' : ''} ${c.status === 'error' ? 'error' : ''}`}
+                            >
+                              <span className="dot" />
+                              {c.name} · {c.label}
+                            </span>
+                          )
+                        })}
                       </div>
                     )}
                     {m.error && (
@@ -893,7 +969,7 @@ export function CommandPalette() {
             ref={inputRef}
             className="cp-input"
             value={query}
-            onChange={e => { setQuery(e.target.value); setSelected(0) }}
+            onChange={e => { setQuery(e.target.value); setSelected(0); pendingIdRef.current = null; setPendingId(null) }}
             onKeyDown={handleKeyDown}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
@@ -924,25 +1000,31 @@ export function CommandPalette() {
           {isFocused && <span className="cp-esc">{tr('cp.esc')}</span>}
         </div>
 
-        {isFocused && results.length > 0 && messages.length === 0 && (
+        {isFocused && results.length > 0 && (
           <div className="cp-results" ref={resultsRef}>
-            {results.map((r, i) => (
+            {results.map((r, i) => {
+              const isPending = pendingId === r.id
+              return (
               <div
                 key={r.id}
-                className={`cp-item cp-item-${r.type} ${i === selected ? 'active' : ''}`}
+                className={`cp-item cp-item-${r.type} ${i === selected ? 'active' : ''} ${isPending ? 'pending-confirm' : ''}`}
                 onMouseEnter={() => setSelected(i)}
                 onMouseDown={e => { e.preventDefault(); launch(r) }}
               >
                 <span className="cp-item-icon">{r.icon}</span>
                 <div className="cp-item-text">
                   <span className="cp-item-label">{r.label}</span>
-                  <span className="cp-item-sub">{r.sub}</span>
+                  <span className="cp-item-sub">
+                    {r.sub}
+                    {isPending && <span className="cp-confirm-hint"> · {tr('cp.confirmOpen')}</span>}
+                  </span>
                 </div>
                 <span className="cp-item-enter">
-                  {r.type === 'command' && !r.action ? '→' : '↵'}
+                  {r.type === 'command' && !r.action ? '→' : isPending ? '↵↵' : '↵'}
                 </span>
               </div>
-            ))}
+              )
+            })}
           </div>
         )}
 

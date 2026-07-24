@@ -182,6 +182,8 @@ export const en = {
   'cp.engine.youtube': 'YO',
   'cp.search': 'Search "{query}"',
   'cp.goToUrl': 'Go to URL',
+  'cp.confirmOpen': 'Press ↵ again to confirm',
+  'cp.chip.clickToOpen': 'Click to open',
   'cp.current': '● current',
   'cp.applyTheme': 'apply theme',
   'cp.applyFont': 'apply font',

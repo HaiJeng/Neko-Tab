@@ -183,6 +183,8 @@ export const zh: Record<TranslationKey, string> = {
   'cp.engine.youtube': '油管',
   'cp.search': '搜索 "{query}"',
   'cp.goToUrl': '前往 URL',
+  'cp.confirmOpen': '再按 ↵ 确认打开',
+  'cp.chip.clickToOpen': '点击打开链接',
   'cp.current': '● 当前',
   'cp.applyTheme': '应用主题',
   'cp.applyFont': '应用字体',

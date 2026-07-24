@@ -3,7 +3,7 @@ import type { AIToolName } from '../hooks/useAIProviders'
 import { isSafeUrl } from './browser'
 
 export type ToolCallResult =
-  | { status: 'done'; label: string }
+  | { status: 'done'; label: string; urls?: string[] }
   | { status: 'error'; label: string; error: string }
 
 export type JournalWriter = (updater: (prev: Record<string, string>) => Record<string, string>) => void
@@ -28,28 +28,19 @@ export async function dispatchToolCall(
       case 'open_url': {
         const url = String(args.url)
         if (!isSafeUrl(url)) return { status: 'error', label: url, error: 'unsafe url' }
-        if (typeof chrome !== 'undefined' && chrome.tabs) chrome.tabs.create({ url })
-        else window.open(url, '_blank')
-        return { status: 'done', label: url.replace(/^https?:\/\//, '').slice(0, 40) }
+        return { status: 'done', label: url.replace(/^https?:\/\//, '').slice(0, 40), urls: [url] }
       }
       case 'open_tabs': {
         const raw = args.urls as string[]
         const urls = raw.filter(u => typeof u === 'string' && isSafeUrl(u))
         if (urls.length === 0) return { status: 'error', label: 'open_tabs', error: 'no safe urls' }
-        if (typeof chrome !== 'undefined' && chrome.tabs) {
-          for (const url of urls) chrome.tabs.create({ url })
-        } else {
-          for (const url of urls) window.open(url, '_blank')
-        }
-        return { status: 'done', label: `${urls.length} tabs` }
+        return { status: 'done', label: `${urls.length} tabs`, urls }
       }
       case 'open_alias': {
         const key = String(args.key)
         const url = deps.resolveAlias(key)
         if (!url || !isSafeUrl(url)) return { status: 'error', label: key, error: 'alias not found' }
-        if (typeof chrome !== 'undefined' && chrome.tabs) chrome.tabs.create({ url })
-        else window.open(url, '_blank')
-        return { status: 'done', label: `${key} → ${url.replace(/^https?:\/\//, '').slice(0, 30)}` }
+        return { status: 'done', label: `${key} → ${url.replace(/^https?:\/\//, '').slice(0, 30)}`, urls: [url] }
       }
       case 'history_search': {
         if (typeof chrome === 'undefined' || !chrome.history) {
@@ -61,8 +52,7 @@ export async function dispatchToolCall(
         )
         const top = items[0]
         if (!top?.url || !isSafeUrl(top.url)) return { status: 'error', label: query, error: 'no match' }
-        if (chrome.tabs) chrome.tabs.create({ url: top.url })
-        return { status: 'done', label: (top.title || top.url).slice(0, 40) }
+        return { status: 'done', label: (top.title || top.url).slice(0, 40), urls: [top.url] }
       }
       case 'remember': {
         const keyword = String(args.keyword)
