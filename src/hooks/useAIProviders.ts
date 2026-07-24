@@ -17,6 +17,92 @@ function sanitizeLong(str: string): string {
   return str.replace(/[\x00-\x1F\x7F]/g, '').slice(0, 4000)
 }
 
+/**
+ * Parse AI response text into AIAction[] with lenient handling:
+ * - Strips markdown code fences
+ * - Accepts bare JSON array, or object wrapped in { actions: [...] }
+ * - Wraps a single object into an array
+ * Throws with the actual snippet on failure.
+ */
+function parseActions(raw: string): AIAction[] {
+  let cleaned = raw.trim()
+
+  // Strip markdown code fences (```json ... ```)
+  cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/, '').trim()
+
+  // Try array first
+  const arrayMatch = cleaned.match(/^\[[\s\S]*\]$/)
+  if (arrayMatch) {
+    try {
+      const parsed = JSON.parse(arrayMatch[0])
+      if (Array.isArray(parsed)) return parsed as AIAction[]
+    } catch { /* fall through */ }
+  }
+
+  // Try { actions: [...] }
+  try {
+    const obj = JSON.parse(cleaned)
+    if (obj.actions && Array.isArray(obj.actions)) return obj.actions as AIAction[]
+    if (!Array.isArray(obj)) {
+      // Single object — wrap in array
+      return [obj] as AIAction[]
+    }
+  } catch { /* fall through */ }
+
+  throw new Error(
+    `AI response was not valid JSON. Response received:\n${cleaned.slice(0, 500)}`
+  )
+}
+
+/**
+ * Resolve a stored AIProviderConfig into an initialized AI SDK LanguageModel.
+ * Shared by executeCommand and the Settings connection test — one place decides
+ * which SDK to load, how to authenticate, and which wire format to speak.
+ */
+export async function resolveLanguageModel(config: AIProviderConfig): Promise<LanguageModel> {
+  // v1.x defaulted to gemini-1.5-flash which Google now 404s; force any stored
+  // config still carrying that value up to the current default.
+  const model = config.model && config.model !== 'gemini-1.5-flash'
+    ? config.model
+    : PROVIDER_DEFAULTS[config.provider].model
+
+  const usesAnthropicFormat =
+    config.provider === 'anthropic' ||
+    (config.provider === 'custom' && config.customFormat === 'anthropic')
+
+  // Lazy-load provider SDKs so they stay out of the main new-tab bundle — pulled in
+  // only when the user actually runs an AI command or tests a connection.
+  if (config.provider === 'gemini') {
+    const { createGoogleGenerativeAI } = await import('@ai-sdk/google')
+    const google = createGoogleGenerativeAI({
+      apiKey: config.apiKey,
+      ...(config.baseUrl ? { baseURL: config.baseUrl } : {}),
+    })
+    return google(model)
+  }
+
+  if (usesAnthropicFormat) {
+    const { createAnthropic } = await import('@ai-sdk/anthropic')
+    const anthropic = createAnthropic({
+      apiKey: config.apiKey,
+      ...(config.baseUrl ? { baseURL: config.baseUrl } : {}),
+      // Required to call the Anthropic API directly from a browser/extension context.
+      headers: { 'anthropic-dangerous-direct-browser-access': 'true' },
+    })
+    return anthropic(model)
+  }
+
+  // OpenAI and OpenAI-compatible custom endpoints.
+  // Use .chat() to force the Chat Completions API — the default callable uses
+  // the Responses API, which OpenAI-compatible gateways (DeepSeek, etc.) don't support.
+  const { createOpenAI } = await import('@ai-sdk/openai')
+  const openai = createOpenAI({
+    apiKey: config.apiKey,
+    ...(config.baseUrl ? { baseURL: config.baseUrl } : {}),
+  })
+  return openai.chat(model)
+}
+
 export function useAIProviders() {
   const [providers, setProviders] = useState<AIProviderConfig[]>([])
   const [activeProvider, setActiveProvider] = useState<AIProvider | null>(null)
@@ -78,43 +164,6 @@ export function useAIProviders() {
     }
   }, [])
 
-  /**
-   * Parse AI response text into AIAction[] with lenient handling:
-   * - Strips markdown code fences
-   * - Accepts bare JSON array, or object wrapped in { actions: [...] }
-   * - Wraps a single object into an array
-   * Throws with the actual snippet on failure.
-   */
-  function parseActions(raw: string): AIAction[] {
-    let cleaned = raw.trim()
-
-    // Strip markdown code fences (```json ... ```)
-    cleaned = cleaned.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/, '').trim()
-
-    // Try array first
-    const arrayMatch = cleaned.match(/^\[[\s\S]*\]$/)
-    if (arrayMatch) {
-      try {
-        const parsed = JSON.parse(arrayMatch[0])
-        if (Array.isArray(parsed)) return parsed as AIAction[]
-      } catch { /* fall through */ }
-    }
-
-    // Try { actions: [...] }
-    try {
-      const obj = JSON.parse(cleaned)
-      if (obj.actions && Array.isArray(obj.actions)) return obj.actions as AIAction[]
-      if (!Array.isArray(obj)) {
-        // Single object — wrap in array
-        return [obj] as AIAction[]
-      }
-    } catch { /* fall through */ }
-
-    throw new Error(
-      `AI response was not valid JSON. Response received:\n${cleaned.slice(0, 500)}`
-    )
-  }
-
   const executeCommand = useCallback(async (
     prompt: string,
     context: { aliases: string; bookmarks: string; tabs: string; history: string; memories: string; browsingHistory?: string }
@@ -128,9 +177,6 @@ export function useAIProviders() {
     if (!providerConfig?.apiKey) {
       throw new Error(`API key not set for ${currentActive}`)
     }
-
-    const defaults = PROVIDER_DEFAULTS[currentActive]
-    const model = providerConfig.model && providerConfig.model !== 'gemini-1.5-flash' ? providerConfig.model : defaults.model
 
     const safeQuery = sanitize(prompt)
 
@@ -182,47 +228,16 @@ When using "save-to-journal": include a "date" field matching the date being sum
 
 Respond ONLY with a valid JSON array. No markdown, no explanation.`
 
-    const usesAnthropicFormat = currentActive === 'anthropic' || (currentActive === 'custom' && providerConfig.customFormat === 'anthropic')
+    const languageModel = await resolveLanguageModel(providerConfig)
 
-    // Lazy-load the AI SDK so it stays out of the main new-tab bundle — it is only
-    // pulled in when the user actually runs an AI command.
     const { generateText } = await import('ai')
-
-    // Resolve the AI SDK model. The SDK normalizes each provider's wire format
-    // (including Anthropic extended-thinking blocks) so we only deal with text.
-    let languageModel: LanguageModel
-    if (currentActive === 'gemini') {
-      const { createGoogleGenerativeAI } = await import('@ai-sdk/google')
-      const google = createGoogleGenerativeAI({
-        apiKey: providerConfig.apiKey,
-        ...(providerConfig.baseUrl ? { baseURL: providerConfig.baseUrl } : {}),
-      })
-      languageModel = google(model)
-    } else if (usesAnthropicFormat) {
-      const { createAnthropic } = await import('@ai-sdk/anthropic')
-      const anthropic = createAnthropic({
-        apiKey: providerConfig.apiKey,
-        ...(providerConfig.baseUrl ? { baseURL: providerConfig.baseUrl } : {}),
-        // Required to call the Anthropic API directly from a browser/extension context.
-        headers: { 'anthropic-dangerous-direct-browser-access': 'true' },
-      })
-      languageModel = anthropic(model)
-    } else {
-      // OpenAI and OpenAI-compatible custom endpoints.
-      // Use .chat() to force the Chat Completions API — the default callable uses
-      // the Responses API, which OpenAI-compatible gateways (DeepSeek, etc.) don't support.
-      const { createOpenAI } = await import('@ai-sdk/openai')
-      const openai = createOpenAI({
-        apiKey: providerConfig.apiKey,
-        ...(providerConfig.baseUrl ? { baseURL: providerConfig.baseUrl } : {}),
-      })
-      languageModel = openai.chat(model)
-    }
-
     const { text } = await generateText({
       model: languageModel,
       prompt: systemPrompt,
       temperature: 0.3,
+      // Ceiling for a JSON action array. Cheap guard against a bad model or
+      // runaway prompt burning tokens and holding the UI open.
+      maxOutputTokens: 800,
     })
 
     if (typeof text !== 'string' || text.trim() === '') {

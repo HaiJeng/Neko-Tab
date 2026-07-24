@@ -378,7 +378,6 @@ export const en = {
   'aiProviders.connectionFailed': 'Connection failed',
   'aiProviders.noProviderConfigured': 'No provider configured',
   'aiProviders.baseUrlNotConfigured': 'Base URL not configured',
-  'aiProviders.apiReturned': 'API returned {status}',
   'aiProviders.usage': 'Usage',
   'aiProviders.usageHint': 'Type ! in the command palette to trigger AI mode.',
   'aiProviders.examples': 'Examples:',

@@ -115,9 +115,3 @@ export interface AIAction {
   urls?: Array<{ label: string; url: string }>
   date?: string
 }
-
-export interface AISettings {
-  enabledProviders: AIProvider[]
-  activeProvider: AIProvider | null
-  customPrompt?: string
-}
