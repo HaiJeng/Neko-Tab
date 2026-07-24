@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Neko-Tab · Chat 改造预览</title>
+<style>
+  :root {
+    --bg-primary: #222526;
+    --bg-secondary: #1A1A1A;
+    --bg-tertiary: #2D3134;
+    --text-primary: #E0E0E0;
+    --text-secondary: #BFBFBF;
+    --accent: #3dd2cc;
+    --accent-hover: #5ae0db;
+    --border: #353A3E;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+  }
+
+  .preview-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  .theme-switch button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    margin-left: 4px;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  .theme-switch button:hover { border-color: var(--accent); }
+  .theme-switch button.active { border-color: var(--accent); color: var(--accent); }
+
+  .scenes {
+    padding: 40px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 60px;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  .scene-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    opacity: 0.6;
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+  }
+
+  /* ============ 状态 A: 无消息，未 focus (退化为原 trigger 外观) ============ */
+  .cp-inline {
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    background: transparent;
+  }
+
+  .cp-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    transition: border-color 0.15s;
+  }
+
+  .cp-input-row:hover,
+  .cp-input-row.focused {
+    border-color: var(--accent);
+  }
+
+  .cp-search-icon {
+    color: var(--text-secondary);
+    opacity: 0.45;
+    flex-shrink: 0;
+  }
+
+  .cp-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    min-width: 0;
+  }
+  .cp-input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.35;
+  }
+
+  .cp-hint {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .cp-hint kbd {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-secondary);
+    opacity: 0.5;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 2px 5px;
+    background: rgba(255,255,255,0.03);
+  }
+
+  .cp-engines {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+  .cp-engine-btn {
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 2px 6px;
+    cursor: pointer;
+    opacity: 0.5;
+  }
+  .cp-engine-btn.active { border-color: var(--accent); color: var(--accent); opacity: 1; }
+
+  .cp-esc {
+    font-size: 10px;
+    color: var(--text-secondary);
+    opacity: 0.4;
+  }
+
+  /* ============ 结果列表 ============ */
+  .cp-results {
+    margin-top: 6px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    max-height: 320px;
+    overflow-y: auto;
+  }
+
+  .cp-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .cp-item:last-child { border-bottom: none; }
+  .cp-item.active { background: var(--bg-tertiary); }
+  .cp-item-icon {
+    width: 16px;
+    text-align: center;
+    color: var(--text-secondary);
+    opacity: 0.6;
+  }
+  .cp-item-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .cp-item-label { font-size: 12px; color: var(--text-primary); }
+  .cp-item-sub { font-size: 10px; color: var(--text-secondary); opacity: 0.5; }
+  .cp-item-enter { font-size: 11px; color: var(--text-secondary); opacity: 0.4; }
+
+  /* ============ 状态 C: 对话进行中 ============ */
+  .cp-chat {
+    margin-bottom: 6px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    max-height: 480px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cp-chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+    color: var(--text-secondary);
+    opacity: 0.5;
+    position: sticky;
+    top: 0;
+    background: var(--bg-secondary);
+    z-index: 1;
+  }
+  .cp-chat-clear {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+    padding: 2px 6px;
+    opacity: 0.6;
+  }
+  .cp-chat-clear:hover { opacity: 1; color: var(--accent); }
+
+  .cp-msg-list {
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .cp-msg {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    line-height: 1.55;
+  }
+
+  .cp-msg-role {
+    font-size: 10px;
+    color: var(--text-secondary);
+    opacity: 0.5;
+    letter-spacing: 1px;
+  }
+  .cp-msg-user .cp-msg-role { color: var(--accent); opacity: 0.7; }
+
+  .cp-msg-content { color: var(--text-primary); white-space: pre-wrap; }
+  .cp-msg-user .cp-msg-content { color: var(--text-primary); }
+
+  /* streaming caret */
+  .cp-msg-content.streaming::after {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 13px;
+    background: var(--accent);
+    margin-left: 2px;
+    vertical-align: text-bottom;
+    animation: blink 1s steps(1) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* tool chips */
+  .cp-tool-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .cp-tool-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: var(--bg-tertiary);
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+  }
+  .cp-tool-chip .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+  .cp-tool-chip.pending .dot { animation: blink 0.8s steps(1) infinite; }
+
+  /* link chips */
+  .cp-link-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .cp-link-chip {
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 11px;
+    cursor: pointer;
+    font-family: var(--font-mono);
+  }
+  .cp-link-chip:hover { color: var(--accent); border-color: var(--accent); }
+
+  .cp-footnote {
+    margin-top: 8px;
+    font-size: 10px;
+    color: var(--text-secondary);
+    opacity: 0.4;
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  /* Theme variants for the switcher */
+  body.paper {
+    --bg-primary: #F5F5F5;
+    --bg-secondary: #FFFFFF;
+    --bg-tertiary: #E8E8E8;
+    --text-primary: #222526;
+    --text-secondary: #555555;
+    --accent: #444444;
+    --accent-hover: #333333;
+    --border: #CCCCCC;
+  }
+  body.nord {
+    --bg-primary: #2E3440;
+    --bg-secondary: #242933;
+    --bg-tertiary: #3B4252;
+    --text-primary: #ECEFF4;
+    --text-secondary: #D8DEE9;
+    --accent: #88C0D0;
+    --accent-hover: #8FBCBB;
+    --border: #4C566A;
+  }
+  body.matrix {
+    --bg-primary: #0D0D0D;
+    --bg-secondary: #000000;
+    --bg-tertiary: #1A1A1A;
+    --text-primary: #00FF41;
+    --text-secondary: #33FF66;
+    --accent: #00FF88;
+    --accent-hover: #66FFAA;
+    --border: #1F5F1F;
+  }
+</style>
+</head>
+<body class="carbon">
+
+<div class="preview-header">
+  <span>Neko-Tab · 多轮对话改造预览（静态原型，非可交互）</span>
+  <div class="theme-switch">
+    <button data-theme="carbon" class="active">Carbon</button>
+    <button data-theme="paper">Paper</button>
+    <button data-theme="nord">Nord</button>
+    <button data-theme="matrix">Matrix</button>
+  </div>
+</div>
+
+<div class="scenes">
+
+  <!-- 场景 A：未 focus，占位 -->
+  <section>
+    <div class="scene-label">A · 未激活状态（等价现在的 cp-trigger 视觉）</div>
+    <div class="cp-inline">
+      <div class="cp-input-row">
+        <svg class="cp-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="cp-input" placeholder="问点什么，或输入网址 / 命令…" disabled>
+        <span class="cp-hint">
+          <kbd>⌘+K</kbd><span style="opacity:.25;font-size:10px">/</span><kbd>/</kbd>
+        </span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 场景 B：focus + 空 query，显示本地搜索的默认列表 -->
+  <section>
+    <div class="scene-label">B · 已 focus，query 为空（保留本地 recent，AI 提示常驻）</div>
+    <div class="cp-inline">
+      <div class="cp-input-row focused">
+        <svg class="cp-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="cp-input" placeholder="问点什么，或输入网址 / 命令…" disabled>
+        <div class="cp-engines">
+          <button class="cp-engine-btn active">G</button>
+          <button class="cp-engine-btn">DDG</button>
+        </div>
+        <span class="cp-esc">esc</span>
+      </div>
+      <div class="cp-results">
+        <div class="cp-item active">
+          <span class="cp-item-icon">↺</span>
+          <div class="cp-item-text">
+            <span class="cp-item-label">GitHub · Neko-Tab/pulls</span>
+            <span class="cp-item-sub">github.com/Neko-Tab/pulls</span>
+          </div>
+          <span class="cp-item-enter">↵</span>
+        </div>
+        <div class="cp-item">
+          <span class="cp-item-icon">↺</span>
+          <div class="cp-item-text">
+            <span class="cp-item-label">Vite Docs</span>
+            <span class="cp-item-sub">vitejs.dev/guide</span>
+          </div>
+          <span class="cp-item-enter">↵</span>
+        </div>
+        <div class="cp-item">
+          <span class="cp-item-icon">↺</span>
+          <div class="cp-item-text">
+            <span class="cp-item-label">Linear · Sprint 42</span>
+            <span class="cp-item-sub">linear.app/team/sprint</span>
+          </div>
+          <span class="cp-item-enter">↵</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 场景 C：多轮对话进行中，最后一条流式 -->
+  <section>
+    <div class="scene-label">C · 多轮对话进行中（消息流在输入框上方，最新流式渲染中）</div>
+    <div class="cp-inline">
+      <div class="cp-chat">
+        <div class="cp-chat-header">
+          <span>AI 对话 · 3 turns · 不持久化</span>
+          <button class="cp-chat-clear">× 清空</button>
+        </div>
+        <div class="cp-msg-list">
+
+          <div class="cp-msg cp-msg-user">
+            <span class="cp-msg-role">USER</span>
+            <span class="cp-msg-content">帮我打开 slack 和 discord</span>
+          </div>
+
+          <div class="cp-msg cp-msg-assistant">
+            <span class="cp-msg-role">ASSISTANT</span>
+            <span class="cp-msg-content">已为你打开两个 workspace。</span>
+            <div class="cp-tool-chips">
+              <span class="cp-tool-chip"><span class="dot"></span>open_url · slack.com</span>
+              <span class="cp-tool-chip"><span class="dot"></span>open_url · discord.com</span>
+            </div>
+          </div>
+
+          <div class="cp-msg cp-msg-user">
+            <span class="cp-msg-role">USER</span>
+            <span class="cp-msg-content">昨天我在看什么？</span>
+          </div>
+
+          <div class="cp-msg cp-msg-assistant">
+            <span class="cp-msg-role">ASSISTANT</span>
+            <span class="cp-msg-content">昨天你集中在两个方向：上午看了 Vite 的 SSR 文档和几篇 React 19 的 Suspense 讨论；下午翻了 shadcn/ui 的 Command 组件源码，并在 GitHub 提交了 Neko-Tab 的 AI SDK 迁移收尾 PR。</span>
+            <div class="cp-link-chips">
+              <button class="cp-link-chip">vitejs.dev / ssr</button>
+              <button class="cp-link-chip">react.dev / suspense</button>
+              <button class="cp-link-chip">ui.shadcn.com / command</button>
+              <button class="cp-link-chip">github.com / PR #1</button>
+            </div>
+          </div>
+
+          <div class="cp-msg cp-msg-user">
+            <span class="cp-msg-role">USER</span>
+            <span class="cp-msg-content">帮我把这个总结存到今天的 journal</span>
+          </div>
+
+          <div class="cp-msg cp-msg-assistant">
+            <span class="cp-msg-role">ASSISTANT</span>
+            <span class="cp-msg-content streaming">好的，我正在把上面的浏览摘要写入 2026-07-24 的 journal</span>
+            <div class="cp-tool-chips">
+              <span class="cp-tool-chip pending"><span class="dot"></span>save_to_journal · 2026-07-24</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="cp-input-row focused">
+        <svg class="cp-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="cp-input" placeholder="继续对话…" disabled>
+        <span class="cp-esc">esc 清空</span>
+      </div>
+
+      <div class="cp-footnote">
+        <span>↵ 发送</span>
+        <span>↑ ↓ 翻历史消息（未实现）</span>
+        <span>esc 清空对话</span>
+        <span>关闭 tab 即消失</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 场景 D：本地精确匹配优先 -->
+  <section>
+    <div class="scene-label">D · 输入命中本地 alias / URL / 命令（AI 不介入，原路径保留）</div>
+    <div class="cp-inline">
+      <div class="cp-input-row focused">
+        <svg class="cp-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="cp-input" value="gh" disabled>
+        <span class="cp-esc">esc</span>
+      </div>
+      <div class="cp-results">
+        <div class="cp-item active">
+          <span class="cp-item-icon">⇥</span>
+          <div class="cp-item-text">
+            <span class="cp-item-label">gh → github.com</span>
+            <span class="cp-item-sub">alias</span>
+          </div>
+          <span class="cp-item-enter">↵</span>
+        </div>
+        <div class="cp-item">
+          <span class="cp-item-icon">✦</span>
+          <div class="cp-item-text">
+            <span class="cp-item-label">让 AI 回答 "gh"</span>
+            <span class="cp-item-sub">Cmd+Enter</span>
+          </div>
+          <span class="cp-item-enter">↵</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 场景 E：AI 报错 -->
+  <section>
+    <div class="scene-label">E · streaming 中出错（保留历史，末尾标红）</div>
+    <div class="cp-inline">
+      <div class="cp-chat">
+        <div class="cp-chat-header">
+          <span>AI 对话 · 1 turn · 不持久化</span>
+          <button class="cp-chat-clear">× 清空</button>
+        </div>
+        <div class="cp-msg-list">
+          <div class="cp-msg cp-msg-user">
+            <span class="cp-msg-role">USER</span>
+            <span class="cp-msg-content">总结一下 anthropic 上周的博客</span>
+          </div>
+          <div class="cp-msg cp-msg-assistant">
+            <span class="cp-msg-role">ASSISTANT</span>
+            <span class="cp-msg-content">Anthropic 上周主要发布了…</span>
+            <div style="color:#e06b6b;font-size:11px;margin-top:4px;">⚠ 请求中断：AI returned an empty response.</div>
+          </div>
+        </div>
+      </div>
+      <div class="cp-input-row focused">
+        <svg class="cp-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input class="cp-input" placeholder="继续对话或重试…" disabled>
+        <span class="cp-esc">esc</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  // Simple theme switcher
+  document.querySelectorAll('.theme-switch button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.body.className = btn.dataset.theme;
+      document.querySelectorAll('.theme-switch button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+</script>
+
+</body>
+</html>
