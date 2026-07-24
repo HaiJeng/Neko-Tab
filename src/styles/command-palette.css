@@ -83,8 +83,25 @@
   transition: background 0.1s;
 }
 
-.cp-item.active { background: var(--bg-tertiary); }
+.cp-item.active {
+  background: var(--bg-secondary);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.cp-item.active .cp-item-label { color: var(--accent); }
 .cp-item.active .cp-item-enter { opacity: 1; }
+
+.cp-item.pending-confirm {
+  background: var(--bg-secondary);
+  box-shadow: inset 2px 0 0 var(--accent), 0 0 0 1px var(--accent);
+}
+.cp-item.pending-confirm .cp-item-sub {
+  color: var(--accent);
+  opacity: 0.9;
+}
+.cp-item.pending-confirm .cp-item-enter {
+  opacity: 1;
+  color: var(--accent);
+}
 
 .cp-item-icon {
   font-size: 12px;
@@ -402,6 +419,34 @@
   color: #e06b6b;
 }
 .cp-tool-chip.error .dot { background: #e06b6b; }
+
+.cp-tool-chip.clickable {
+  cursor: pointer;
+}
+button.cp-tool-chip {
+  outline: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+button.cp-tool-chip:focus-visible {
+  box-shadow: 0 0 0 1px var(--accent);
+}
+button.cp-tool-chip:hover,
+button.cp-tool-chip:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.cp-chip-arrow {
+  opacity: 0.5;
+  font-size: 10px;
+  margin-left: 2px;
+}
+.cp-tool-chip.clickable:hover .cp-chip-arrow {
+  opacity: 1;
+}
 
 .cp-msg-error {
   color: #e06b6b;
