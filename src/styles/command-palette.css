@@ -271,6 +271,11 @@
   width: 100%;
   max-width: 520px;
   position: relative;
+  z-index: 50;
+}
+
+.cp-inline.focused {
+  z-index: 200;
 }
 
 .cp-chat {
