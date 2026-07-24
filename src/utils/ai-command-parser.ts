@@ -7,7 +7,7 @@ export type ToolCallResult =
   | { status: 'error'; label: string; error: string }
 
 export type JournalWriter = (updater: (prev: Record<string, string>) => Record<string, string>) => void
-export type MemoryWriter = (keyword: string, url: string, source: 'ai') => Promise<void> | void
+export type MemoryWriter = (keyword: string, url: string, source: 'ai') => Promise<unknown> | unknown
 export type AliasLookup = (key: string) => string | undefined
 
 /**

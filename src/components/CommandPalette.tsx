@@ -2,17 +2,31 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useBookmarks, useLocalStorage, useSettings } from '../hooks/useLocalStorage'
 import type { UrlAlias, ThemeType } from '../types'
-import { Search, Earth, Bookmark } from 'lucide-react'
+import { Search, Earth } from 'lucide-react'
 import { openChromeNewTab } from './ChromeTabButton'
 import { recordTabUsage } from '../utils/tabUsage'
 import { useOpenTabs } from '../hooks/useOpenTabs'
-import { useAIProviders } from '../hooks/useAIProviders'
+import { useAIProviders, type AIToolName } from '../hooks/useAIProviders'
 import { useAIMemory } from '../hooks/useAIMemory'
-import { executeActions, buildContext, fetchFrequentDestinations, parseDateQuery, fetchHistoryForDateRange } from '../utils/ai-command-parser'
+import { buildContext, fetchFrequentDestinations, dispatchToolCall } from '../utils/ai-command-parser'
 import { isSafeUrl } from '../utils/browser'
 import { useTranslation } from '../i18n'
 import type { TranslationKey } from '../i18n'
 import { SUPPORTED_LANGUAGES } from '../i18n'
+import type { ModelMessage } from 'ai'
+
+type ToolChip = {
+  name: AIToolName
+  label: string
+  status: 'pending' | 'done' | 'error'
+}
+
+type ChatMessage = {
+  role: 'user' | 'assistant'
+  content: string
+  toolCalls?: ToolChip[]
+  error?: string
+}
 
 interface Result {
   id: string
@@ -224,12 +238,12 @@ const SLASH_COMMANDS: { name: string; descKey: TranslationKey; icon: any; hint?:
 ]
 
 export function CommandPalette() {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isFocused, setIsFocused] = useState(false)
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState(0)
   const [engine, setEngine] = useState('google')
   const [toast, setToast] = useState<string | null>(null)
-  const { t: tr, locale } = useTranslation()
+  const { t: tr } = useTranslation()
   const [historyResults, setHistoryResults] = useState<RecentItem[]>([])
   const { categories } = useBookmarks()
   const [settings, setSettings] = useSettings()
@@ -238,27 +252,20 @@ export function CommandPalette() {
   const [, setDailyGoal] = useLocalStorage<{ text: string; date: string } | null>('neko-daily-goal', null)
   const [, setScratchpad] = useLocalStorage<string>('neko-scratchpad', '')
   const { tabs } = useOpenTabs()
-  const { activeProvider, executeCommand, loadProviders } = useAIProviders()
+  const { activeProvider, streamChat, loadProviders } = useAIProviders()
   const { memories, saveMemory } = useAIMemory()
-  const [aiLoading, setAiLoading] = useState(false)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [aiStreaming, setAiStreaming] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
-  const [aiAnswer, setAiAnswer] = useState<{ text: string; urls: Array<{ label: string; url: string }>; dateKey: string } | null>(null)
   const [, setJournal] = useLocalStorage<Record<string, string>>('neko-journal', {})
   const fetchedRef = useRef(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const resultsRef = useRef<HTMLDivElement>(null)
+  const chatRef = useRef<HTMLDivElement>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout>>()
 
   useEffect(() => {
-    if (!isOpen) setAiAnswer(null)
-  }, [isOpen])
-
-  useEffect(() => {
-    if (query) setAiAnswer(null)
-  }, [query])
-
-  useEffect(() => {
-    if (isOpen && !fetchedRef.current) {
+    if (isFocused && !fetchedRef.current) {
       fetchedRef.current = true
       fetchFrequentDestinations().then(historyMemories => {
         for (const m of historyMemories) {
@@ -266,13 +273,17 @@ export function CommandPalette() {
         }
       })
     }
-  }, [isOpen])
+  }, [isFocused, saveMemory])
 
   useEffect(() => {
     return () => {
       if (toastTimer.current) clearTimeout(toastTimer.current)
     }
   }, [])
+
+  useEffect(() => {
+    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight
+  }, [messages])
 
   const showToast = useCallback((msg: string) => {
     setToast(msg)
@@ -289,7 +300,7 @@ export function CommandPalette() {
 
   // Search browser history when query changes
   useEffect(() => {
-    if (!query.trim() || query.startsWith('/') || query.startsWith('=') || query.startsWith('!')) {
+    if (!query.trim() || query.startsWith('/') || query.startsWith('=')) {
       setHistoryResults([])
       return
     }
@@ -315,36 +326,121 @@ export function CommandPalette() {
     )
   }, [query])
 
-  // Mirror theme class onto the portaled panel so CSS vars resolve correctly
+  // Mirror theme class onto the palette so CSS vars resolve correctly
   const themeClass = settings.theme || 'carbon'
 
-  // Open/close
+  // Global keyboard shortcuts — focus the input, don't open an overlay
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement).tagName
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault()
-        setIsOpen(o => !o)
-        if (!isOpen) { setQuery(''); setSelected(0) }
+        inputRef.current?.focus()
       }
-      // '/' key opens if not in input
       if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA') {
         e.preventDefault()
-        setIsOpen(true); setQuery('/'); setSelected(0)
+        setQuery('/')
+        setSelected(0)
+        inputRef.current?.focus()
       }
-      if (e.key === 'Escape') { setIsOpen(false) }
+      if (e.key === 'Escape' && document.activeElement === inputRef.current) {
+        if (query) setQuery('')
+        else if (messages.length > 0) { setMessages([]); setAiError(null) }
+        else inputRef.current?.blur()
+      }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [isOpen])
-
-  useEffect(() => {
-    if (isOpen) setTimeout(() => inputRef.current?.focus(), 30)
-  }, [isOpen])
+  }, [query, messages.length])
 
   useEffect(() => {
     loadProviders()
   }, [loadProviders])
+
+  const resolveAlias = useCallback((key: string) => {
+    return aliases.find(a => a.key === key)?.url
+  }, [aliases])
+
+  const sendChat = useCallback(async (userText: string) => {
+    if (!activeProvider) {
+      setAiError(tr('cp.chat.noProvider'))
+      return
+    }
+    const trimmed = userText.trim()
+    if (!trimmed || aiStreaming) return
+
+    setAiError(null)
+
+    const historyForApi: ModelMessage[] = [
+      ...messages.map(m => ({ role: m.role, content: m.content })),
+      { role: 'user' as const, content: trimmed },
+    ]
+    setMessages(prev => [
+      ...prev,
+      { role: 'user', content: trimmed },
+      { role: 'assistant', content: '', toolCalls: [] },
+    ])
+    setQuery('')
+    setSelected(0)
+    setAiStreaming(true)
+
+    const context = buildContext(
+      aliases,
+      categories,
+      recent.slice(0, 10).map(r => ({ title: r.label, url: r.url })),
+      historyResults.slice(0, 10).map(h => ({ title: h.label, url: h.url })),
+      memories,
+    )
+
+    try {
+      const result = await streamChat(historyForApi, context)
+
+      for await (const chunk of result.fullStream) {
+        if (chunk.type === 'text-delta') {
+          const delta = chunk.text
+          setMessages(prev => {
+            const last = prev[prev.length - 1]
+            if (!last || last.role !== 'assistant') return prev
+            return [...prev.slice(0, -1), { ...last, content: last.content + delta }]
+          })
+        } else if (chunk.type === 'tool-call') {
+          const toolName = chunk.toolName as AIToolName
+          const input = (chunk.input || {}) as Record<string, unknown>
+          const displayLabel = String(
+            input.url ?? input.key ?? input.query ?? input.keyword ?? input.date ?? toolName,
+          )
+          setMessages(prev => {
+            const last = prev[prev.length - 1]
+            if (!last || last.role !== 'assistant') return prev
+            const chip: ToolChip = { name: toolName, label: displayLabel, status: 'pending' }
+            return [...prev.slice(0, -1), { ...last, toolCalls: [...(last.toolCalls || []), chip] }]
+          })
+          const outcome = await dispatchToolCall(toolName, input, {
+            saveMemory,
+            setJournal,
+            resolveAlias,
+          })
+          setMessages(prev => {
+            const last = prev[prev.length - 1]
+            if (!last || last.role !== 'assistant') return prev
+            const updated = (last.toolCalls || []).map((c, i, arr) =>
+              i === arr.length - 1 ? { ...c, status: outcome.status, label: outcome.label } : c,
+            )
+            return [...prev.slice(0, -1), { ...last, toolCalls: updated }]
+          })
+        }
+      }
+    } catch (e) {
+      const errMsg = e instanceof Error ? e.message : String(e)
+      setMessages(prev => {
+        const last = prev[prev.length - 1]
+        if (!last || last.role !== 'assistant') return prev
+        return [...prev.slice(0, -1), { ...last, error: errMsg }]
+      })
+    } finally {
+      setAiStreaming(false)
+    }
+  }, [activeProvider, aiStreaming, messages, aliases, categories, recent, historyResults, memories, streamChat, saveMemory, setJournal, resolveAlias, tr])
 
   const results = useMemo<Result[]>(() => {
     const out: Result[] = []
@@ -562,105 +658,6 @@ export function CommandPalette() {
       return out
     }
 
-    // ── AI Command — triggered by "!" prefix ──
-    if (query.startsWith('!')) {
-      if (activeProvider) {
-        const aiQuery = query.slice(1).trim()
-        if (aiQuery) {
-          out.push({
-            id: 'ai-command',
-            label: aiQuery,
-            sub: aiLoading ? tr('cp.aiProcessing') : tr('cp.aiAsk'),
-            icon: aiLoading ? <span className="cp-dots"><span /><span /><span /></span> : '✦',
-            type: 'ai' as const,
-            action: aiLoading ? undefined : async () => {
-              setAiLoading(true)
-              setAiError(null)
-
-              try {
-                // Detect date in query and fetch targeted history
-                const dateRange = parseDateQuery(aiQuery)
-                let dateHistory: { title: string; url: string; ts: number }[] = []
-                let dateHistoryStr = ''
-                if (dateRange) {
-                  dateHistory = await fetchHistoryForDateRange(dateRange.startTime, dateRange.endTime)
-                  if (dateHistory.length > 0) {
-                    dateHistoryStr = `[${dateRange.label}]\n` + dateHistory.map(h => {
-                      const time = new Date(h.ts).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
-                      return `${time} — ${h.title} (${h.url})`
-                    }).join('\n')
-                  }
-                }
-
-                const context = buildContext(
-                  aliases,
-                  categories,
-                  recent.slice(0, 10).map(r => ({ title: r.label, url: r.url })),
-                  historyResults.slice(0, 10).map(h => ({ title: h.label, url: h.url })),
-                  memories
-                )
-
-                const actions = await executeCommand(aiQuery, { ...context, browsingHistory: dateHistoryStr || undefined })
-                const answerAction = actions.find(a => a.type === 'answer')
-                const rememberActions = actions.filter(a => a.type === 'remember')
-                const execActions = actions.filter(a => !['remember', 'answer', 'save-to-journal'].includes(a.type))
-
-                // Handle answer display
-                if (answerAction) {
-                  setAiAnswer({
-                    text: answerAction.value,
-                    urls: answerAction.urls || [],
-                    dateKey: dateRange ? toLocalDateKey(new Date(dateRange.startTime)) : toLocalDateKey(new Date()),
-                  })
-                  setAiLoading(false)
-                  return
-                }
-
-                // Execute navigation actions
-                if (execActions.length > 0) {
-                  await executeActions(execActions)
-                }
-
-                for (const ra of rememberActions) {
-                  if (ra.url) {
-                    await saveMemory(ra.value, ra.url, 'ai')
-                    showToast(tr('cp.toast.learned', { keyword: ra.value, url: ra.url }))
-                  }
-                }
-
-                if (execActions.length === 0 && rememberActions.length === 0 && !answerAction) {
-                  setAiError(tr('cp.aiNoActions'))
-                  return
-                }
-
-                if (execActions.length > 0) {
-                  showToast(tr('cp.toast.executed', { count: execActions.length, plural: execActions.length > 1 ? 's' : '' }))
-                }
-              } catch (err) {
-                setAiError(err instanceof Error ? err.message : tr('cp.aiFailed'))
-                return
-              } finally {
-                setAiLoading(false)
-              }
-
-              // Only close palette if there were no answer actions
-              setIsOpen(false)
-              setQuery('')
-            },
-          })
-        }
-      } else {
-        out.push({
-          id: 'ai-no-provider',
-          label: tr('cp.aiNoProvider'),
-          sub: tr('cp.aiNoProviderSub'),
-          icon: '⚠️',
-          type: 'command' as const,
-        })
-      }
-      return out
-    }
-
     // ── Normal search (existing logic) ──
 
     // When empty — show recent first
@@ -751,8 +748,20 @@ export function CommandPalette() {
       }
     }
 
+    // Ask AI fallback — appended last so local matches keep priority
+    if (activeProvider && query.trim() && !query.startsWith('/') && !query.startsWith('=')) {
+      out.push({
+        id: 'ask-ai',
+        label: tr('cp.chat.askAI', { query: query.trim() }),
+        sub: aiStreaming ? tr('cp.chat.streaming') : tr('cp.chat.enterHint'),
+        icon: aiStreaming ? <span className="cp-dots"><span /><span /><span /></span> : '✦',
+        type: 'ai' as const,
+        action: aiStreaming ? undefined : () => sendChat(query.trim()),
+      })
+    }
+
     return out
-  }, [query, categories, aliases, engine, settings.theme, settings.font, settings.clockFormat, settings.language, recent, historyResults, showToast, setSettings, setRecent, setDailyGoal, setScratchpad, tabs, activeProvider, aiLoading, executeCommand, tr, locale])
+  }, [query, categories, aliases, engine, settings.theme, settings.font, settings.clockFormat, settings.language, recent, historyResults, showToast, setSettings, setRecent, setDailyGoal, setScratchpad, tabs, activeProvider, aiStreaming, sendChat, tr])
 
   useEffect(() => { setSelected(0) }, [query])
 
@@ -780,8 +789,8 @@ export function CommandPalette() {
           chrome.windows.update(tab.windowId, { focused: true })
         })
       }
-      setIsOpen(false)
       setQuery('')
+      inputRef.current?.blur()
       return
     }
     if (r.action) {
@@ -790,10 +799,12 @@ export function CommandPalette() {
         return
       }
       r.action()
-    } else if (r.url) {
+      setQuery('')
+      return
+    }
+    if (r.url) {
       if (!isSafeUrl(r.url)) {
         showToast(tr('cp.toast.invalidUrl'))
-        setIsOpen(false)
         setQuery('')
         return
       }
@@ -801,7 +812,6 @@ export function CommandPalette() {
       addRecent(r.label, r.url)
       window.location.href = r.url
     }
-    setIsOpen(false)
     setQuery('')
   }
 
@@ -817,165 +827,129 @@ export function CommandPalette() {
     }
     if (e.key === 'Enter') {
       e.preventDefault()
-      if (aiAnswer) {
-        setIsOpen(false)
-        setQuery('')
-        return
-      }
       if (results[selected]) {
         launch(results[selected])
+      } else if (query.trim() && activeProvider) {
+        // No local results — send to AI
+        sendChat(query.trim())
       } else if (query.trim()) {
-        // fallback: web search
+        // No provider configured — fall back to web search
         void recordTabUsage()
         const fallbackUrl = SEARCH_ENGINES[engine].url + encodeURIComponent(query)
         if (isSafeUrl(fallbackUrl)) {
           window.location.href = fallbackUrl
         }
-        setIsOpen(false); setQuery('')
+        setQuery('')
       }
     }
   }
 
   return (
     <>
-      {/* Trigger bar — sits inline where SearchBar used to be */}
-      <div className="cp-trigger" onClick={() => { setIsOpen(true); setQuery(''); setSelected(0) }}>
-        <Search size={14} className="cp-trigger-icon" />
-        <span className="cp-trigger-text">{tr('cp.trigger.text')}</span>
-        <span className="cp-trigger-hint">
-          <kbd>⌘+K</kbd>
-          <span className="cp-trigger-sep">/</span>
-          <kbd>/</kbd>
-        </span>
-      </div>
-
-      {/* Palette overlay — portaled to body so it escapes any layout constraints */}
-      {isOpen && createPortal(
-        <div className="cp-overlay" onClick={() => setIsOpen(false)}>
-          <div className={`cp-panel ${themeClass}`} onClick={e => e.stopPropagation()}>
-            <div className="cp-input-row">
-              <Search size={14} className="cp-search-icon" />
-              <input
-                ref={inputRef}
-                className="cp-input"
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={tr('cp.input.placeholder')}
-                spellCheck={false}
-              />
-              {!query.startsWith('/') && (
-                <div className="cp-engines">
-                  {Object.entries(SEARCH_ENGINES).map(([key, val]) => (
-                    <button
-                      key={key}
-                      className={`cp-engine-btn ${engine === key ? 'active' : ''}`}
-                      onClick={e => { e.stopPropagation(); setEngine(key) }}
-                      title={val.name}
-                    >
-                      {tr(val.labelKey)}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <span className="cp-esc">{tr('cp.esc')}</span>
+      <div className={`cp-inline ${themeClass} ${isFocused ? 'focused' : ''} ${messages.length > 0 ? 'has-chat' : ''}`}>
+        {messages.length > 0 && (
+          <div className="cp-chat" ref={chatRef}>
+            <div className="cp-chat-header">
+              <span>{tr('cp.chat.turnsLabel', { count: messages.filter(m => m.role === 'user').length })}</span>
+              <button
+                className="cp-chat-clear"
+                onMouseDown={e => { e.preventDefault(); setMessages([]); setAiError(null) }}
+              >
+                × {tr('cp.chat.clear')}
+              </button>
             </div>
-
-            {aiAnswer ? (
-              <div className="cp-answer">
-                <div className="cp-answer-text">{aiAnswer.text}</div>
-                {aiAnswer.urls.length > 0 && (
-                  <div className="cp-answer-chips">
-                    {aiAnswer.urls.map((u, i) => (
-                      <button
-                        key={i}
-                        className="cp-chip"
-                        onClick={() => {
-                          if (!isSafeUrl(u.url)) return
-                          if (typeof chrome !== 'undefined' && chrome.tabs) {
-                            chrome.tabs.create({ url: u.url })
-                          } else {
-                            window.location.href = u.url
-                          }
-                        }}
-                      >
-                        {u.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <button
-                  className="cp-save-journal"
-                  onClick={() => {
-                    const dateKey = aiAnswer.dateKey
-                    const dateLabel = new Date(dateKey + 'T00:00:00').toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' })
-                    const linkList = aiAnswer.urls.length > 0
-                      ? '\n' + aiAnswer.urls.map(u => `• ${u.label} — ${u.url}`).join('\n')
-                      : ''
-                    const entry = `--- AI Summary (${dateLabel}) ---\n${aiAnswer.text}${linkList}`
-                    setJournal(prev => {
-                      const existing = prev[dateKey] || ''
-                      const sep = existing ? '\n\n' : ''
-                      return { ...prev, [dateKey]: existing + sep + entry }
-                    })
-                    setAiAnswer(null)
-                    setIsOpen(false)
-                    setQuery('')
-                    showToast(tr('cp.toast.savedJournal'))
-                  }}
-                >
-                  <Bookmark size={14} style={{ marginRight: 6 }} /> {tr('cp.saveJournal')}
-                </button>
-              </div>
-            ) : results.length > 0 && (
-              <div className="cp-results" ref={resultsRef}>
-                {results.map((r, i) => (
-                  <div
-                    key={r.id}
-                    className={`cp-item cp-item-${r.type} ${i === selected ? 'active' : ''}`}
-                    onMouseEnter={() => setSelected(i)}
-                    onClick={() => launch(r)}
-                  >
-                    <span className="cp-item-icon">{r.icon}</span>
-                    <div className="cp-item-text">
-                      <span className="cp-item-label">{r.label}</span>
-                      <span className="cp-item-sub">{r.sub}</span>
-                    </div>
-                    <span className="cp-item-enter">
-                      {r.type === 'command' && !r.action ? '→' : '↵'}
+            <div className="cp-msg-list">
+              {messages.map((m, i) => {
+                const isLastAssistant = i === messages.length - 1 && m.role === 'assistant'
+                return (
+                  <div key={i} className={`cp-msg cp-msg-${m.role}`}>
+                    <span className="cp-msg-role">{m.role === 'user' ? 'USER' : 'ASSISTANT'}</span>
+                    <span className={`cp-msg-content ${aiStreaming && isLastAssistant ? 'streaming' : ''}`}>
+                      {m.content}
                     </span>
+                    {m.toolCalls && m.toolCalls.length > 0 && (
+                      <div className="cp-tool-chips">
+                        {m.toolCalls.map((c, ci) => (
+                          <span key={ci} className={`cp-tool-chip ${c.status === 'pending' ? 'pending' : ''} ${c.status === 'error' ? 'error' : ''}`}>
+                            <span className="dot" />
+                            {c.name} · {c.label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {m.error && (
+                      <span className="cp-msg-error">⚠ {m.error}</span>
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
-
-            {aiError && (
-              <div className="cp-ai-error">⚠️ {aiError}</div>
-            )}
-
-            {aiAnswer && (
-              <div className="cp-hint-row">
-                <span>{tr('cp.hint.openChip')}</span>
-                <span>{tr('cp.hint.close')}</span>
-              </div>
-            )}
-            {!query && !aiAnswer && (
-              <div className="cp-hint-row">
-                <span>{tr('cp.hint.navigate')}</span>
-                <span>{tr('cp.hint.open')}</span>
-                <span>{tr('cp.hint.commands')}</span>
-                <span>{tr('cp.hint.tabs')}</span>
-                {activeProvider && <span>{tr('cp.hint.ai')}</span>}
-                {recent.length > 0
-                  ? <button className="cp-clear-btn" onClick={e => { e.stopPropagation(); setRecent([]) }}>{tr('cp.hint.clearHistory')}</button>
-                  : <span>{tr('cp.hint.close')}</span>
-                }
-              </div>
-            )}
+                )
+              })}
+            </div>
           </div>
-        </div>,
-        document.body
-      )}
+        )}
+
+        <div className={`cp-input-row ${isFocused ? 'focused' : ''}`}>
+          <Search size={14} className="cp-search-icon" />
+          <input
+            ref={inputRef}
+            className="cp-input"
+            value={query}
+            onChange={e => { setQuery(e.target.value); setSelected(0) }}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            placeholder={tr('cp.trigger.text')}
+            spellCheck={false}
+          />
+          {isFocused && !query.startsWith('/') && (
+            <div className="cp-engines">
+              {Object.entries(SEARCH_ENGINES).map(([key, val]) => (
+                <button
+                  key={key}
+                  className={`cp-engine-btn ${engine === key ? 'active' : ''}`}
+                  onMouseDown={e => { e.preventDefault(); setEngine(key) }}
+                  title={val.name}
+                >
+                  {tr(val.labelKey)}
+                </button>
+              ))}
+            </div>
+          )}
+          {!isFocused && (
+            <span className="cp-trigger-hint">
+              <kbd>⌘+K</kbd>
+              <span className="cp-trigger-sep">/</span>
+              <kbd>/</kbd>
+            </span>
+          )}
+          {isFocused && <span className="cp-esc">{tr('cp.esc')}</span>}
+        </div>
+
+        {isFocused && results.length > 0 && messages.length === 0 && (
+          <div className="cp-results" ref={resultsRef}>
+            {results.map((r, i) => (
+              <div
+                key={r.id}
+                className={`cp-item cp-item-${r.type} ${i === selected ? 'active' : ''}`}
+                onMouseEnter={() => setSelected(i)}
+                onMouseDown={e => { e.preventDefault(); launch(r) }}
+              >
+                <span className="cp-item-icon">{r.icon}</span>
+                <div className="cp-item-text">
+                  <span className="cp-item-label">{r.label}</span>
+                  <span className="cp-item-sub">{r.sub}</span>
+                </div>
+                <span className="cp-item-enter">
+                  {r.type === 'command' && !r.action ? '→' : '↵'}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {aiError && (
+          <div className="cp-ai-error">⚠️ {aiError}</div>
+        )}
+      </div>
 
       {/* Toast feedback for slash commands */}
       {toast && createPortal(
