@@ -5,7 +5,7 @@
   "key": "__GOOGLE_EXTENSION_KEY__",
   "description": "Custom Terminal-style New Tab Page",
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'sha256-9h6cMlG+wehv5PIl9iqaQcU8WSqE0ANpgmuDQF5LX6I=' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net"
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'sha256-9h6cMlG+wehv5PIl9iqaQcU8WSqE0ANpgmuDQF5LX6I=' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self' https://api.openai.com https://api.anthropic.com https://generativelanguage.googleapis.com http://localhost:* https:"
   },
   "chrome_url_overrides": {
     "newtab": "index.html"
