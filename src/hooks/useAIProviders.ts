@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { z } from 'zod'
 import type { LanguageModel, ModelMessage } from 'ai'
 import type { AIProvider, AIProviderConfig } from '../types'
@@ -107,6 +107,27 @@ export async function resolveLanguageModel(config: AIProviderConfig): Promise<La
 export function useAIProviders() {
   const [providers, setProviders] = useState<AIProviderConfig[]>([])
   const [activeProvider, setActiveProvider] = useState<AIProvider | null>(null)
+
+  // Keep every hook instance in sync when another one (e.g. the Settings panel)
+  // writes to chrome.storage.local — otherwise callers like CommandPalette hold
+  // stale state until the tab is reloaded.
+  useEffect(() => {
+    if (typeof chrome === 'undefined' || !chrome.storage?.onChanged) return
+    const handler = (
+      changes: Record<string, chrome.storage.StorageChange>,
+      area: string,
+    ) => {
+      if (area !== 'local') return
+      if (changes['ai-providers']) {
+        setProviders((changes['ai-providers'].newValue as AIProviderConfig[] | undefined) ?? [])
+      }
+      if (changes['ai-active-provider']) {
+        setActiveProvider((changes['ai-active-provider'].newValue as AIProvider | null | undefined) ?? null)
+      }
+    }
+    chrome.storage.onChanged.addListener(handler)
+    return () => chrome.storage.onChanged.removeListener(handler)
+  }, [])
 
   const loadProviders = useCallback(async () => {
     if (typeof chrome === 'undefined' || !chrome.storage?.local) return
