@@ -42,9 +42,9 @@
 - [x] 6.1 在 `src/i18n/locales/en.ts` 追加 17 个 ASCII 相关 keys（`ascii.title`、`ascii.label.*`、`ascii.group.*`、`ascii.chip.*`、`ascii.input.placeholder`、`ascii.action.*`）
 - [x] 6.2 在 `src/i18n/locales/zh.ts` 追加同 17 个 keys 的中文文案
 - [x] 6.3 修改 `aiProviders.usageHint`（英/中）：将 "Type `!` in the command palette to trigger AI mode" 替换为准确描述（"Type a request in the command palette; select \"Ask AI\" or press Enter." / "在命令面板输入请求，选择\"Ask AI\"或按 Enter。"）
-- [ ] 6.4 修改 `README.md`：删除 Command Palette 段落的 "type `!` for AI commands"，删除 AI Command Interpreter 段落的 "Type `!` in the command palette to trigger AI mode"
-- [ ] 6.5 `npm run build`（0 错误）
-- [ ] 6.6 commit：`docs: 补齐 ASCII 编辑器 i18n 文案并清理过时 ! 前缀说明`
+- [x] 6.4 修改 `README.md`：删除 Command Palette 段落的 "type `!` for AI commands"，删除 AI Command Interpreter 段落的 "Type `!` in the command palette to trigger AI mode"
+- [x] 6.5 `npm run build`（0 错误）
+- [x] 6.6 commit：`docs: 补齐 ASCII 编辑器 i18n 文案并清理过时 ! 前缀说明`
 
 ## 7. 端到端手动验证
 
