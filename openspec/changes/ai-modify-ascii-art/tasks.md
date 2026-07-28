@@ -14,11 +14,11 @@
 
 ## 3. Dispatch Case + buildContext 扩展
 
-- [ ] 3.1 扩展 `src/utils/ai-command-parser.ts` 的 `buildContext` 签名，接受 `currentAsciiArt?: string`，非空时追加 ASCII 区块到系统 prompt
-- [ ] 3.2 扩展 `DispatchCallbacks` 接口，新增 `onOpenAsciiPreview?: (data: { art: string; description?: string }) => void`
-- [ ] 3.3 在 `dispatchToolCall` 中新增 `case 'set_ascii_art'`：验证 art 非空且不超大，调 `callbacks.onOpenAsciiPreview`；若回调未接则返回 error
-- [ ] 3.4 `npm run build`（0 错误）
-- [ ] 3.5 commit：`feat(ai): dispatchToolCall 分派 set_ascii_art 到预览回调`
+- [x] 3.1 扩展 `src/utils/ai-command-parser.ts` 的 `buildContext` 签名，接受 `currentAsciiArt?: string`，非空时追加 ASCII 区块到系统 prompt
+- [x] 3.2 扩展 `DispatchCallbacks` 接口，新增 `onOpenAsciiPreview?: (data: { art: string; description?: string }) => void`
+- [x] 3.3 在 `dispatchToolCall` 中新增 `case 'set_ascii_art'`：验证 art 非空且不超大，调 `callbacks.onOpenAsciiPreview`；若回调未接则返回 error
+- [x] 3.4 `npm run build`（0 错误）
+- [x] 3.5 commit：`feat(ai): dispatchToolCall 分派 set_ascii_art 到预览回调`
 
 ## 4. AsciiPreviewPanel 组件 + 样式
 
