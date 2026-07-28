@@ -4,9 +4,10 @@ import { useBookmarks, useLocalStorage, useSettings } from '../hooks/useLocalSto
 import type { UrlAlias, ThemeType } from '../types'
 import { Search, Earth } from 'lucide-react'
 import { openChromeNewTab } from './ChromeTabButton'
+import { AsciiPreviewPanel } from './AsciiPreviewPanel'
 import { recordTabUsage } from '../utils/tabUsage'
 import { useOpenTabs } from '../hooks/useOpenTabs'
-import { useAIProviders, type AIToolName } from '../hooks/useAIProviders'
+import { useAIProviders, generateAsciiArt, type AIToolName } from '../hooks/useAIProviders'
 import { useAIMemory } from '../hooks/useAIMemory'
 import { buildContext, fetchFrequentDestinations, fetchRecentHistory, dispatchToolCall } from '../utils/ai-command-parser'
 import { isSafeUrl } from '../utils/browser'
@@ -254,9 +255,12 @@ export function CommandPalette() {
   const [, setDailyGoal] = useLocalStorage<{ text: string; date: string } | null>('neko-daily-goal', null)
   const [, setScratchpad] = useLocalStorage<string>('neko-scratchpad', '')
   const { tabs } = useOpenTabs()
-  const { activeProvider, streamChat, loadProviders } = useAIProviders()
+  const { providers, activeProvider, streamChat, loadProviders } = useAIProviders()
+  const activeProviderConfig = providers.find(p => p.provider === activeProvider) ?? null
   const { memories, saveMemory } = useAIMemory()
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [asciiPreview, setAsciiPreview] = useState<{ art: string; description?: string } | null>(null)
+  const [asciiAutoInstruction, setAsciiAutoInstruction] = useState<string | null>(null)
   const [aiStreaming, setAiStreaming] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
   const pendingIdRef = useRef<string | null>(null)
@@ -455,6 +459,16 @@ export function CommandPalette() {
       setAiStreaming(false)
     }
   }, [activeProvider, aiStreaming, messages, aliases, categories, recent, historyResults, memories, streamChat, saveMemory, setJournal, resolveAlias, tr])
+
+  // Dedicated ASCII edit entry: open the drawer and auto-run one round with the
+  // user's query, bypassing the generic chat / tool-routing path.
+  const editAscii = useCallback((instruction: string) => {
+    if (!activeProviderConfig) return
+    setQuery('')
+    setSelected(0)
+    setAsciiPreview({ art: settings.customAsciiArt ?? settings.asciiArt ?? '' })
+    setAsciiAutoInstruction(instruction)
+  }, [activeProviderConfig, settings.customAsciiArt, settings.asciiArt])
 
   const results = useMemo<Result[]>(() => {
     const out: Result[] = []
@@ -762,6 +776,20 @@ export function CommandPalette() {
       }
     }
 
+    // Dedicated ASCII edit entry — goes straight to the preview drawer via
+    // generateAsciiArt, skipping the generic tool-routing path. Listed before
+    // "Ask AI" so ASCII intent has its own explicit option.
+    if (activeProvider && query.trim() && !query.startsWith('/') && !query.startsWith('=')) {
+      out.push({
+        id: 'edit-ascii',
+        label: tr('cp.chat.editAscii', { query: query.trim() }),
+        sub: tr('cp.chat.editAsciiHint'),
+        icon: '✎',
+        type: 'ai' as const,
+        action: () => editAscii(query.trim()),
+      })
+    }
+
     // Ask AI fallback — appended last so local matches keep priority
     if (activeProvider && query.trim() && !query.startsWith('/') && !query.startsWith('=')) {
       out.push({
@@ -775,7 +803,7 @@ export function CommandPalette() {
     }
 
     return out
-  }, [query, categories, aliases, engine, settings.theme, settings.font, settings.clockFormat, settings.language, recent, historyResults, showToast, setSettings, setRecent, setDailyGoal, setScratchpad, tabs, activeProvider, aiStreaming, sendChat, tr])
+  }, [query, categories, aliases, engine, settings.theme, settings.font, settings.clockFormat, settings.language, recent, historyResults, showToast, setSettings, setRecent, setDailyGoal, setScratchpad, tabs, activeProvider, aiStreaming, sendChat, editAscii, tr])
 
   useEffect(() => { setSelected(0); pendingIdRef.current = null; setPendingId(null) }, [query])
 
@@ -1052,6 +1080,25 @@ export function CommandPalette() {
       {toast && createPortal(
         <div className="cp-toast">{toast}</div>,
         document.body
+      )}
+
+      {/* ASCII art preview drawer — mounted only when the AI calls set_ascii_art */}
+      {asciiPreview && activeProviderConfig && (
+        <AsciiPreviewPanel
+          currentArt={settings.customAsciiArt ?? settings.asciiArt ?? ''}
+          art={asciiPreview.art}
+          description={asciiPreview.description}
+          autoInstruction={asciiAutoInstruction ?? undefined}
+          onApply={art => {
+            setSettings(s => ({ ...s, customAsciiArt: art, asciiArtSource: 'custom' }))
+            setAsciiPreview(null)
+            setAsciiAutoInstruction(null)
+          }}
+          onClose={() => { setAsciiPreview(null); setAsciiAutoInstruction(null) }}
+          onRequestAI={(currentArt, instruction) =>
+            generateAsciiArt(activeProviderConfig, currentArt, instruction)
+          }
+        />
       )}
     </>
   )

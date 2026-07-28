@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { z } from 'zod'
 import type { LanguageModel, ModelMessage } from 'ai'
 import type { AIProvider, AIProviderConfig } from '../types'
@@ -104,9 +104,70 @@ export async function resolveLanguageModel(config: AIProviderConfig): Promise<La
   return openai.chat(model)
 }
 
+/**
+ * One-shot ASCII art generation for the preview panel's refinement loop.
+ * Skips tool routing and the full browsing context so each "add a hat"
+ * doesn't re-stream bookmarks/history/tabs — only the latest preview plus
+ * the current instruction is sent (D2/D3). Strips code fences some models
+ * wrap around the result (D7).
+ */
+export async function generateAsciiArt(
+  providerConfig: AIProviderConfig,
+  currentArt: string,
+  instruction: string,
+): Promise<string> {
+  const languageModel = await resolveLanguageModel(providerConfig)
+  const { generateText } = await import('ai')
+
+  const result = await generateText({
+    model: languageModel,
+    system:
+      'You generate and refine monospace ASCII art for a terminal-style new tab page. ' +
+      'Keep every row the same width by padding with trailing spaces. ' +
+      'Limit output to 120 columns wide and 60 rows tall. ' +
+      'Output ONLY the raw ASCII art — no explanation, no markdown code fences, no surrounding prose.',
+    prompt: `Current ASCII art:\n${currentArt}\n\nInstruction: ${instruction}\n\nReturn the full updated ASCII art only.`,
+    temperature: 0.4,
+    // Reasoning models (e.g. ark-code) spend tokens thinking first; 2000
+    // truncated art mid-generation. Matches streamChat's cap.
+    maxOutputTokens: 4000,
+  })
+
+  return stripCodeFences(result.text)
+}
+
+/** Remove a single pair of surrounding ```lang ... ``` fences if present. */
+function stripCodeFences(text: string): string {
+  return text
+    .replace(/^\s*```[\w-]*\n?/, '')
+    .replace(/\n?```\s*$/, '')
+    .trim()
+}
+
 export function useAIProviders() {
   const [providers, setProviders] = useState<AIProviderConfig[]>([])
   const [activeProvider, setActiveProvider] = useState<AIProvider | null>(null)
+
+  // Keep every hook instance in sync when another one (e.g. the Settings panel)
+  // writes to chrome.storage.local — otherwise callers like CommandPalette hold
+  // stale state until the tab is reloaded.
+  useEffect(() => {
+    if (typeof chrome === 'undefined' || !chrome.storage?.onChanged) return
+    const handler = (
+      changes: Record<string, chrome.storage.StorageChange>,
+      area: string,
+    ) => {
+      if (area !== 'local') return
+      if (changes['ai-providers']) {
+        setProviders((changes['ai-providers'].newValue as AIProviderConfig[] | undefined) ?? [])
+      }
+      if (changes['ai-active-provider']) {
+        setActiveProvider((changes['ai-active-provider'].newValue as AIProvider | null | undefined) ?? null)
+      }
+    }
+    chrome.storage.onChanged.addListener(handler)
+    return () => chrome.storage.onChanged.removeListener(handler)
+  }, [])
 
   const loadProviders = useCallback(async () => {
     if (typeof chrome === 'undefined' || !chrome.storage?.local) return
@@ -205,7 +266,10 @@ ${sanitizeLong(context.memories)}
       messages,
       tools: AI_TOOLS,
       temperature: 0.3,
-      maxOutputTokens: 1200,
+      // set_ascii_art emits a full ASCII picture as tool args. Reasoning models
+      // (e.g. ark-code) spend tokens thinking before the tool call, so the old
+      // 1200 cap truncated art to "" → dispatch rejected it as empty.
+      maxOutputTokens: 4000,
     })
   }, [activeProvider, providers])
 

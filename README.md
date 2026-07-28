@@ -15,27 +15,31 @@ Designed around keyboard-first navigation, a command palette, and a clean aesthe
 
 ### Command Palette
 
-Press `Ctrl+K` or `/` to open the unified command palette. It replaces the traditional search bar entirely. Type `>` to search open tabs, `!` for AI commands, or `/` for slash commands.
+Press `Ctrl+K` or `/` to open the unified command palette. It replaces the traditional search bar entirely. Type `>` to search open tabs, `/` for slash commands, `=` for the built-in calculator — and anything else is sent to your active AI provider for natural-language interpretation.
 
 - **Smart routing** — type a URL (`github.com/raj`) and it navigates directly; type a keyword and it fuzzy-searches your bookmarks and aliases; type anything else and it falls through to web search
+- **AI commands** — type anything the command palette can't match and it's sent to your configured AI provider (OpenAI, Anthropic, Gemini, or custom API) for natural-language interpretation
 - **URL aliases** — define short keys like `gh → https://github.com/raj` that appear first in results
 - **Browser history autocomplete** — typing `instagram` also searches browser history, shows matching previously visited pages with a `◷` icon, and dedupes them against aliases and bookmarks already shown
 - **Built-in calculator** — type `= 1920/2` to instantly evaluate numeric expressions with support for `+`, `-`, `*`, `/`, `%`, `()`, and `^`; press `Enter` to copy the result
 - **Tab search** — type `> reddit` to search all open browser tabs across windows; fuzzy matches by title and URL; select to focus that tab
-- **Slash commands** — type `/clock` to toggle clock maximized mode, `/chrome-tab` to open a Chrome tab
+- **Slash commands** — type `/theme` to switch themes, `/font` to change the monospace font, `/goal` to set a daily goal, `/note` for a quick note, `/clock` to toggle 12/24h format, `/language` to switch UI language, `/export` to download all settings, or `/clear` to reset everything
 - **Engine switcher** — switch between Google, DuckDuckGo, GitHub, and YouTube inside the palette
 - **Fuzzy search** — matches bookmarks by title, URL, or category
 
 ### AI Command Interpreter
 
-Type `!` in the command palette to trigger AI mode. Powered by your choice of provider (OpenAI, Anthropic, Gemini, or custom API).
+Type any natural-language query in the command palette (anything that isn't a URL, `/`, `>`, or `=`) to trigger AI mode. Powered by **Vercel AI SDK** with support for OpenAI, Anthropic, Google Gemini, or any OpenAI/Anthropic-compatible API.
 
-- **Natural language navigation** — `! open slack and discord` opens both in new tabs
+- **Natural language navigation** — `open slack and discord` opens both in new tabs
 - **Smart URL resolution** — prefers your most-visited URLs from browser history
 - **AI Memory** — automatically learns which URLs you use for each service; suggests new mappings as you use the palette
-- **Browsing History Q&A** — ask `! what did I do yesterday` or `! summarize last week` — the AI fetches your Chrome history for that period and returns a concise summary with clickable link chips
+- **Browsing History Q&A** — ask `what did I do yesterday` or `summarize last week` — the AI fetches your Chrome history for that period and returns a concise summary with clickable link chips
 - **Save to journal** — each AI summary includes a **Save to journal** button that writes it to the scratchpad journal with the correct date stamp
 - **Supported date queries** — `today`, `yesterday`, `last week`, `this month`, specific dates (`May 30`, `june 1`), and day names (`Monday`)
+- **Editable providers** — configured AI providers can be edited anytime: update name, API key, model, base URL, and wire format
+- **Cross-tab sync** — provider changes in one tab propagate to every open new-tab page instantly via `chrome.storage.onChanged`
+- **Custom provider format** — custom endpoints support both OpenAI and Anthropic message formats
 - **View and manage** learned mappings in **Settings → AI → AI Memory**
 
 ### AI Memory
@@ -47,9 +51,13 @@ The AI learns from your browsing patterns over time:
 - **AI suggestions** — the AI can propose new memory mappings when it opens unfamiliar services
 - **Settings UI** — view, edit, search, and delete learned memories in **Settings → AI**
 
+### Internationalization
+
+Full UI translation across English and 简体中文. The extension auto-detects the browser's preferred language on first launch (matches on the primary subtag, e.g. `zh-CN` → `zh`), and the choice is persisted in settings. Switch anytime from **Settings → Preferences → Language**.
+
 ### Theming
 
-22+ professionally crafted themes across three categories:
+23 professionally crafted themes across three categories:
 
 - **Color**: Carbon, Paper, Nord, Solarized, Matrix, Dracula, Monokai, Gruvbox, Tokyo Night, Catppuccin, One Dark, Rosé Pine, Everforest, ChatGPT, Claude
 - **Animated**: Cyberpunk, Aurora, Synthwave, Vaporwave
@@ -121,7 +129,7 @@ A two-column quick-links panel below the command palette. Fully editable without
 
 ### Chrome Tab Button
 
-Toggle with `Ctrl+Shift+R`, press `c` (when not in an input), or click the tab icon (top-right). Opens a new Chrome tab with the same new tab page.
+Press `c` (when not in an input) or click the tab icon (top-right) to open a new Chrome tab with the same new tab page.
 
 ### Clock Maximization
 
@@ -146,8 +154,6 @@ Press `?` anywhere to show the full shortcut cheatsheet.
 | `Ctrl+\`` | Toggle scratchpad |
 | `Ctrl+Shift+T` | Start / stop work timer |
 | `Ctrl+F` | Open / close Focus Mode |
-| `Ctrl+Shift+S` | Save scratchpad (auto-saves anyway) |
-| `Ctrl+Shift+R` | Open Chrome tab |
 | `Alt+Shift+S` | Trigger startup sites card |
 | `?` | Show shortcut help |
 | `c` | Open Chrome tab (when not in input) |
@@ -203,9 +209,9 @@ Without credentials, the extension runs normally — just without Calendar suppo
 
 Open the gear icon (top-right) to access:
 
-- **Appearance** — theme picker with live preview, font chooser (12 curated monospace fonts)
+- **Appearance** — theme picker (23 themes) with live preview, font chooser (12 curated monospace fonts)
 - **ASCII Art** — image-to-ASCII converter, custom art editor, or OS-specific art (Windows/Mac/Linux)
-- **Preferences** — name, clock format (12/24h), display toggles (clock, greeting, status bar, tab counter, etc.)
+- **Preferences** — name, language (English/中文), clock format (12/24h), display toggles (clock, greeting, status bar, tab counter, etc.)
 - **Widgets** — background image with dim/blur controls, daily goal, GitHub streak (set username)
 - **AI** — configure AI providers (OpenAI, Anthropic, Gemini, custom API), manage learned URL memories
 - **Aliases** — define short URL aliases for the command palette
@@ -244,6 +250,7 @@ No analytics, no tracking, no external servers — except searches you explicitl
 
 - React + TypeScript
 - Vite
+- Vercel AI SDK (OpenAI, Anthropic, Google Gemini, custom providers)
 - Lucide React (icons)
 - JetBrains Mono (default font), 11 more via lazy Google Fonts loading
 

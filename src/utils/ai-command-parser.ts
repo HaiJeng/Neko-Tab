@@ -10,6 +10,12 @@ export type JournalWriter = (updater: (prev: Record<string, string>) => Record<s
 export type MemoryWriter = (keyword: string, url: string, source: 'ai') => Promise<unknown> | unknown
 export type AliasLookup = (key: string) => string | undefined
 
+export interface DispatchCallbacks {
+  saveMemory: MemoryWriter
+  setJournal: JournalWriter
+  resolveAlias: AliasLookup
+}
+
 /**
  * Execute one tool call from the ai-sdk stream. Called synchronously as the
  * stream emits `tool-call` chunks; the caller renders the return value as a chip.
@@ -17,11 +23,7 @@ export type AliasLookup = (key: string) => string | undefined
 export async function dispatchToolCall(
   name: AIToolName,
   args: Record<string, unknown>,
-  deps: {
-    saveMemory: MemoryWriter
-    setJournal: JournalWriter
-    resolveAlias: AliasLookup
-  },
+  deps: DispatchCallbacks,
 ): Promise<ToolCallResult> {
   try {
     switch (name) {
