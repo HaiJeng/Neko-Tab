@@ -51,6 +51,19 @@ export const AI_TOOLS = {
       date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     }),
   },
+  set_ascii_art: {
+    description:
+      "Set or replace the ASCII art shown on the user's new tab page. " +
+      'Call this whenever the user asks to modify, change, add to, redraw, or edit the ASCII art — ' +
+      'including the neko cat, the mascot, or any text-based picture on the page. ' +
+      'ADD = modify the existing art in the same style and only add the requested feature; ' +
+      'REPLACE = generate entirely new art. Always keep characters monospace-aligned ' +
+      '(every row the same width) and limit output to 120 columns wide and 60 rows tall.',
+    inputSchema: z.object({
+      art: z.string().min(1),
+      description: z.string().optional(),
+    }),
+  },
 } as const
 
 export type AIToolName = keyof typeof AI_TOOLS
@@ -102,6 +115,44 @@ export async function resolveLanguageModel(config: AIProviderConfig): Promise<La
     ...(config.baseUrl ? { baseURL: config.baseUrl } : {}),
   })
   return openai.chat(model)
+}
+
+/**
+ * One-shot ASCII art generation for the preview panel's refinement loop.
+ * Skips tool routing and the full browsing context so each "add a hat"
+ * doesn't re-stream bookmarks/history/tabs — only the latest preview plus
+ * the current instruction is sent (D2/D3). Strips code fences some models
+ * wrap around the result (D7).
+ */
+export async function generateAsciiArt(
+  providerConfig: AIProviderConfig,
+  currentArt: string,
+  instruction: string,
+): Promise<string> {
+  const languageModel = await resolveLanguageModel(providerConfig)
+  const { generateText } = await import('ai')
+
+  const result = await generateText({
+    model: languageModel,
+    system:
+      'You generate and refine monospace ASCII art for a terminal-style new tab page. ' +
+      'Keep every row the same width by padding with trailing spaces. ' +
+      'Limit output to 120 columns wide and 60 rows tall. ' +
+      'Output ONLY the raw ASCII art — no explanation, no markdown code fences, no surrounding prose.',
+    prompt: `Current ASCII art:\n${currentArt}\n\nInstruction: ${instruction}\n\nReturn the full updated ASCII art only.`,
+    temperature: 0.4,
+    maxOutputTokens: 2000,
+  })
+
+  return stripCodeFences(result.text)
+}
+
+/** Remove a single pair of surrounding ```lang ... ``` fences if present. */
+function stripCodeFences(text: string): string {
+  return text
+    .replace(/^\s*```[\w-]*\n?/, '')
+    .replace(/\n?```\s*$/, '')
+    .trim()
 }
 
 export function useAIProviders() {
@@ -188,7 +239,7 @@ export function useAIProviders() {
 
   const streamChat = useCallback(async (
     messages: ModelMessage[],
-    context: { aliases: string; bookmarks: string; tabs: string; history: string; memories: string },
+    context: { aliases: string; bookmarks: string; tabs: string; history: string; memories: string; asciiArt?: string },
   ) => {
     const currentActive = activeProvider
     if (!currentActive) throw new Error('No active AI provider configured')
@@ -215,7 +266,7 @@ open tabs: ${sanitize(context.tabs)}
 recent history: ${sanitizeLong(context.history)}
 known destinations:
 ${sanitizeLong(context.memories)}
-</context>`
+</context>${context.asciiArt ? `\n\n--- Current ASCII Art on the new tab page ---\n${context.asciiArt}\n--- End Current ASCII Art ---\nThe user can ask to modify this art (ADD = modify existing) or replace it entirely (REPLACE = generate new). When so, call set_ascii_art with the full updated art, keeping characters monospace-aligned and within 120 columns x 60 rows.` : ''}`
 
     const languageModel = await resolveLanguageModel(providerConfig)
     const { streamText } = await import('ai')

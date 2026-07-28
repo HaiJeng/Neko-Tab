@@ -6,11 +6,11 @@
 
 ## 2. AI Tool Schema + generateAsciiArt 助手
 
-- [ ] 2.1 在 `src/hooks/useAIProviders.ts` 的 `AI_TOOLS` 中新增 `set_ascii_art`（schema: `art: z.string().min(1)`, `description: z.string().optional()`），description 明确列出触发关键词（modify / change / add / redraw / edit / neko / mascot / picture）
-- [ ] 2.2 扩展 `streamChat` 参数，接受 `currentAsciiArt?: string`，传递给 `buildContext`
-- [ ] 2.3 新增导出 `generateAsciiArt(providerConfig, currentArt, instruction): Promise<string>`（跳过 tool routing，只用 `generateText` + 精简系统 prompt，strip 掉 code fences）
-- [ ] 2.4 `npm run build`（0 错误）
-- [ ] 2.5 commit：`feat(ai): 新增 set_ascii_art tool 与 generateAsciiArt 助手`
+- [x] 2.1 在 `src/hooks/useAIProviders.ts` 的 `AI_TOOLS` 中新增 `set_ascii_art`（schema: `art: z.string().min(1)`, `description: z.string().optional()`），description 明确列出触发关键词（modify / change / add / redraw / edit / neko / mascot / picture）
+- [x] 2.2 扩展 `streamChat` 参数，接受 `currentAsciiArt?: string`，传递给 `buildContext`
+- [x] 2.3 新增导出 `generateAsciiArt(providerConfig, currentArt, instruction): Promise<string>`（跳过 tool routing，只用 `generateText` + 精简系统 prompt，strip 掉 code fences）
+- [x] 2.4 `npm run build`（0 错误）
+- [x] 2.5 commit：`feat(ai): 新增 set_ascii_art tool 与 generateAsciiArt 助手`
 
 ## 3. Dispatch Case + buildContext 扩展
 
