@@ -1,8 +1,8 @@
 ## 1. 纯函数工具集
 
-- [ ] 1.1 新建 `src/utils/asciiUtils.ts`，实现 `flipHorizontal`、`scaleUp`、`scaleDown`、`trimEmptyLines`、`trimEmptyColumns`（全部纯函数，不可变）
-- [ ] 1.2 `npm run build`（0 错误）
-- [ ] 1.3 commit：`chore: 新增 ASCII 纯函数工具集`
+- [x] 1.1 新建 `src/utils/asciiUtils.ts`，实现 `flipHorizontal`、`scaleUp`、`scaleDown`、`trimEmptyLines`、`trimEmptyColumns`（全部纯函数，不可变）
+- [x] 1.2 `npm run build`（0 错误）
+- [x] 1.3 commit：`chore: 新增 ASCII 纯函数工具集`
 
 ## 2. AI Tool Schema + generateAsciiArt 助手
 
