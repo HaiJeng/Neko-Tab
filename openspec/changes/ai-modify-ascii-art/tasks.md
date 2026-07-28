@@ -22,11 +22,11 @@
 
 ## 4. AsciiPreviewPanel 组件 + 样式
 
-- [ ] 4.1 新建 `src/components/AsciiPreviewPanel.tsx`（~230 行）：Drawer 组件，含双栏并排预览、AI/本地 chip 列表、自由输入框、Apply/Discard 按钮、Escape 关闭、loading 态互斥、error 显示
-- [ ] 4.2 新建 `src/styles/ascii-preview.css`（~80 行）：Drawer 定位、slide-in 动画、双栏 grid、chip 样式、按钮样式、响应式
-- [ ] 4.3 在 `src/index.css` 追加 `@import './styles/ascii-preview.css'`
-- [ ] 4.4 `npm run build`（0 错误）
-- [ ] 4.5 commit：`feat(ui): AsciiPreviewPanel 组件与样式`
+- [x] 4.1 新建 `src/components/AsciiPreviewPanel.tsx`（~230 行）：Drawer 组件，含双栏并排预览、AI/本地 chip 列表、自由输入框、Apply/Discard 按钮、Escape 关闭、loading 态互斥、error 显示
+- [x] 4.2 新建 `src/styles/ascii-preview.css`（~80 行）：Drawer 定位、slide-in 动画、双栏 grid、chip 样式、按钮样式、响应式
+- [x] 4.3 在 `src/index.css` 追加 `@import './styles/ascii-preview.css'`
+- [x] 4.4 `npm run build`（0 错误）
+- [x] 4.5 commit：`feat(ui): AsciiPreviewPanel 组件与样式`
 
 ## 5. CommandPalette 集成
 
@@ -39,9 +39,9 @@
 
 ## 6. i18n 文案 + 过时说明清理
 
-- [ ] 6.1 在 `src/i18n/locales/en.ts` 追加 17 个 ASCII 相关 keys（`ascii.title`、`ascii.label.*`、`ascii.group.*`、`ascii.chip.*`、`ascii.input.placeholder`、`ascii.action.*`）
-- [ ] 6.2 在 `src/i18n/locales/zh.ts` 追加同 17 个 keys 的中文文案
-- [ ] 6.3 修改 `aiProviders.usageHint`（英/中）：将 "Type `!` in the command palette to trigger AI mode" 替换为准确描述（"Type a request in the command palette; select \"Ask AI\" or press Enter." / "在命令面板输入请求，选择\"Ask AI\"或按 Enter。"）
+- [x] 6.1 在 `src/i18n/locales/en.ts` 追加 17 个 ASCII 相关 keys（`ascii.title`、`ascii.label.*`、`ascii.group.*`、`ascii.chip.*`、`ascii.input.placeholder`、`ascii.action.*`）
+- [x] 6.2 在 `src/i18n/locales/zh.ts` 追加同 17 个 keys 的中文文案
+- [x] 6.3 修改 `aiProviders.usageHint`（英/中）：将 "Type `!` in the command palette to trigger AI mode" 替换为准确描述（"Type a request in the command palette; select \"Ask AI\" or press Enter." / "在命令面板输入请求，选择\"Ask AI\"或按 Enter。"）
 - [ ] 6.4 修改 `README.md`：删除 Command Palette 段落的 "type `!` for AI commands"，删除 AI Command Interpreter 段落的 "Type `!` in the command palette to trigger AI mode"
 - [ ] 6.5 `npm run build`（0 错误）
 - [ ] 6.6 commit：`docs: 补齐 ASCII 编辑器 i18n 文案并清理过时 ! 前缀说明`
