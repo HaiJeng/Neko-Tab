@@ -277,7 +277,10 @@ ${sanitizeLong(context.memories)}
       messages,
       tools: AI_TOOLS,
       temperature: 0.3,
-      maxOutputTokens: 1200,
+      // set_ascii_art emits a full ASCII picture as tool args. Reasoning models
+      // (e.g. ark-code) spend tokens thinking before the tool call, so the old
+      // 1200 cap truncated art to "" → dispatch rejected it as empty.
+      maxOutputTokens: 4000,
     })
   }, [activeProvider, providers])
 

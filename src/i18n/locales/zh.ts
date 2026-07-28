@@ -395,6 +395,7 @@ export const zh: Record<TranslationKey, string> = {
   'ascii.input.placeholder': '描述一个改动，例如"加副眼镜"...',
   'ascii.action.apply': '应用',
   'ascii.action.discard': '放弃',
+  'ascii.action.undo': '撤销',
 
   // Bookmarks
   'bookmarks.quickLinks': '快速链接',

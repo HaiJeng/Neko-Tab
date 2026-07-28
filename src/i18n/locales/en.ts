@@ -394,6 +394,7 @@ export const en = {
   'ascii.input.placeholder': 'describe a change, e.g. "add glasses"...',
   'ascii.action.apply': 'Apply',
   'ascii.action.discard': 'Discard',
+  'ascii.action.undo': 'Undo',
 
   // Bookmarks
   'bookmarks.quickLinks': 'QUICK LINKS',

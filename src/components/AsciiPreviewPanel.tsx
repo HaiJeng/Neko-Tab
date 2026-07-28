@@ -53,7 +53,14 @@ export function AsciiPreviewPanel({
   onRequestAI,
 }: AsciiPreviewPanelProps) {
   const { t: tr } = useTranslation()
-  const [preview, setPreview] = useState(art)
+  // History stack so any edit (local chip or AI round) can be undone. The tip
+  // of the stack is the current preview; undo pops back one frame.
+  const [history, setHistory] = useState<string[]>([art])
+  const preview = history[history.length - 1]
+  const canUndo = history.length > 1
+  const pushPreview = (next: string) =>
+    setHistory(h => (h[h.length - 1] === next ? h : [...h, next]))
+  const undo = () => setHistory(h => (h.length > 1 ? h.slice(0, -1) : h))
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -85,7 +92,7 @@ export function AsciiPreviewPanel({
     setError(null)
     try {
       const next = await onRequestAI(preview, instruction)
-      if (next.trim()) setPreview(next)
+      if (next.trim()) pushPreview(next)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -153,7 +160,7 @@ export function AsciiPreviewPanel({
                 key={chip.key}
                 type="button"
                 className="ascii-chip ascii-chip-local"
-                onClick={() => setPreview(chip.op(preview))}
+                onClick={() => pushPreview(chip.op(preview))}
               >
                 {tr(chipLabelKey(chip.key))}
               </button>
@@ -162,6 +169,14 @@ export function AsciiPreviewPanel({
         </div>
 
         <div className="ascii-input-row">
+          <button
+            type="button"
+            className="ascii-undo"
+            onClick={undo}
+            disabled={!canUndo || loading}
+            aria-label={tr('ascii.action.undo')}
+            title={tr('ascii.action.undo')}
+          >↶</button>
           <input
             className="ascii-input"
             value={input}
@@ -202,6 +217,8 @@ export function AsciiPreviewPanel({
         </footer>
       </div>
     </div>,
-    document.body,
+    // Portal into .app (not body) so the drawer inherits theme CSS variables
+    // — they're scoped to .app.{theme}, and a body portal leaves them black.
+    document.querySelector('.app') ?? document.body,
   )
 }
