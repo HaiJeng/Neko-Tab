@@ -13,10 +13,12 @@ import {
 interface AsciiPreviewPanelProps {
   /** Read-only original art shown in the left column. */
   currentArt: string
-  /** Initial previewed art (the LLM's first set_ascii_art payload). */
+  /** Initial previewed art shown before the first AI round. */
   art: string
-  /** Optional human-readable note from the LLM about this change. */
+  /** Optional human-readable note about this change. */
   description?: string
+  /** When set, run one AI round automatically on mount (dedicated entry point). */
+  autoInstruction?: string
   onApply: (art: string) => void
   onClose: () => void
   /** Refine the art: given current preview + instruction, return new art. */
@@ -48,6 +50,7 @@ export function AsciiPreviewPanel({
   currentArt,
   art,
   description,
+  autoInstruction,
   onApply,
   onClose,
   onRequestAI,
@@ -99,6 +102,13 @@ export function AsciiPreviewPanel({
       setLoading(false)
     }
   }
+
+  // Dedicated entry point: auto-run one AI round on mount so the user's query
+  // from the command palette immediately produces a preview.
+  useEffect(() => {
+    if (autoInstruction?.trim()) void runAi(autoInstruction)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const handleSend = () => {
     const instruction = input.trim()

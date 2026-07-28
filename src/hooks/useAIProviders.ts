@@ -51,19 +51,6 @@ export const AI_TOOLS = {
       date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     }),
   },
-  set_ascii_art: {
-    description:
-      "Set or replace the ASCII art shown on the user's new tab page. " +
-      'Call this whenever the user asks to modify, change, add to, redraw, or edit the ASCII art — ' +
-      'including the neko cat, the mascot, or any text-based picture on the page. ' +
-      'ADD = modify the existing art in the same style and only add the requested feature; ' +
-      'REPLACE = generate entirely new art. Always keep characters monospace-aligned ' +
-      '(every row the same width) and limit output to 120 columns wide and 60 rows tall.',
-    inputSchema: z.object({
-      art: z.string().min(1),
-      description: z.string().optional(),
-    }),
-  },
 } as const
 
 export type AIToolName = keyof typeof AI_TOOLS
@@ -141,7 +128,9 @@ export async function generateAsciiArt(
       'Output ONLY the raw ASCII art — no explanation, no markdown code fences, no surrounding prose.',
     prompt: `Current ASCII art:\n${currentArt}\n\nInstruction: ${instruction}\n\nReturn the full updated ASCII art only.`,
     temperature: 0.4,
-    maxOutputTokens: 2000,
+    // Reasoning models (e.g. ark-code) spend tokens thinking first; 2000
+    // truncated art mid-generation. Matches streamChat's cap.
+    maxOutputTokens: 4000,
   })
 
   return stripCodeFences(result.text)
@@ -239,7 +228,7 @@ export function useAIProviders() {
 
   const streamChat = useCallback(async (
     messages: ModelMessage[],
-    context: { aliases: string; bookmarks: string; tabs: string; history: string; memories: string; asciiArt?: string },
+    context: { aliases: string; bookmarks: string; tabs: string; history: string; memories: string },
   ) => {
     const currentActive = activeProvider
     if (!currentActive) throw new Error('No active AI provider configured')
@@ -266,7 +255,7 @@ open tabs: ${sanitize(context.tabs)}
 recent history: ${sanitizeLong(context.history)}
 known destinations:
 ${sanitizeLong(context.memories)}
-</context>${context.asciiArt ? `\n\n--- Current ASCII Art on the new tab page ---\n${context.asciiArt}\n--- End Current ASCII Art ---\nThe user can ask to modify this art (ADD = modify existing) or replace it entirely (REPLACE = generate new). When so, call set_ascii_art with the full updated art, keeping characters monospace-aligned and within 120 columns x 60 rows.` : ''}`
+</context>`
 
     const languageModel = await resolveLanguageModel(providerConfig)
     const { streamText } = await import('ai')

@@ -203,6 +203,8 @@ export const zh: Record<TranslationKey, string> = {
   'cp.calcCopy': '回车复制结果',
   'cp.calcHint': '输入表达式，例如 = 1920/2',
   'cp.chat.askAI': '让 AI 回答：{query}',
+  'cp.chat.editAscii': '修改 ASCII 艺术：{query}',
+  'cp.chat.editAsciiHint': '在预览面板生成',
   'cp.chat.streaming': '正在回复...',
   'cp.chat.enterHint': '按 ↵ 发送',
   'cp.chat.turnsLabel': 'AI 对话 · {count} 轮 · 不持久化',

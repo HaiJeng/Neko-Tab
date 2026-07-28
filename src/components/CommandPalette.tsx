@@ -260,6 +260,7 @@ export function CommandPalette() {
   const { memories, saveMemory } = useAIMemory()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [asciiPreview, setAsciiPreview] = useState<{ art: string; description?: string } | null>(null)
+  const [asciiAutoInstruction, setAsciiAutoInstruction] = useState<string | null>(null)
   const [aiStreaming, setAiStreaming] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
   const pendingIdRef = useRef<string | null>(null)
@@ -406,7 +407,6 @@ export function CommandPalette() {
       recent.slice(0, 10).map(r => ({ title: r.label, url: r.url })),
       historyForContext,
       memories,
-      settings.customAsciiArt ?? settings.asciiArt,
     )
 
     try {
@@ -436,7 +436,6 @@ export function CommandPalette() {
             saveMemory,
             setJournal,
             resolveAlias,
-            onOpenAsciiPreview: ({ art, description }) => setAsciiPreview({ art, description }),
           })
           setMessages(prev => {
             const last = prev[prev.length - 1]
@@ -460,6 +459,16 @@ export function CommandPalette() {
       setAiStreaming(false)
     }
   }, [activeProvider, aiStreaming, messages, aliases, categories, recent, historyResults, memories, streamChat, saveMemory, setJournal, resolveAlias, tr])
+
+  // Dedicated ASCII edit entry: open the drawer and auto-run one round with the
+  // user's query, bypassing the generic chat / tool-routing path.
+  const editAscii = useCallback((instruction: string) => {
+    if (!activeProviderConfig) return
+    setQuery('')
+    setSelected(0)
+    setAsciiPreview({ art: settings.customAsciiArt ?? settings.asciiArt ?? '' })
+    setAsciiAutoInstruction(instruction)
+  }, [activeProviderConfig, settings.customAsciiArt, settings.asciiArt])
 
   const results = useMemo<Result[]>(() => {
     const out: Result[] = []
@@ -767,6 +776,20 @@ export function CommandPalette() {
       }
     }
 
+    // Dedicated ASCII edit entry — goes straight to the preview drawer via
+    // generateAsciiArt, skipping the generic tool-routing path. Listed before
+    // "Ask AI" so ASCII intent has its own explicit option.
+    if (activeProvider && query.trim() && !query.startsWith('/') && !query.startsWith('=')) {
+      out.push({
+        id: 'edit-ascii',
+        label: tr('cp.chat.editAscii', { query: query.trim() }),
+        sub: tr('cp.chat.editAsciiHint'),
+        icon: '✎',
+        type: 'ai' as const,
+        action: () => editAscii(query.trim()),
+      })
+    }
+
     // Ask AI fallback — appended last so local matches keep priority
     if (activeProvider && query.trim() && !query.startsWith('/') && !query.startsWith('=')) {
       out.push({
@@ -780,7 +803,7 @@ export function CommandPalette() {
     }
 
     return out
-  }, [query, categories, aliases, engine, settings.theme, settings.font, settings.clockFormat, settings.language, recent, historyResults, showToast, setSettings, setRecent, setDailyGoal, setScratchpad, tabs, activeProvider, aiStreaming, sendChat, tr])
+  }, [query, categories, aliases, engine, settings.theme, settings.font, settings.clockFormat, settings.language, recent, historyResults, showToast, setSettings, setRecent, setDailyGoal, setScratchpad, tabs, activeProvider, aiStreaming, sendChat, editAscii, tr])
 
   useEffect(() => { setSelected(0); pendingIdRef.current = null; setPendingId(null) }, [query])
 
@@ -1065,11 +1088,13 @@ export function CommandPalette() {
           currentArt={settings.customAsciiArt ?? settings.asciiArt ?? ''}
           art={asciiPreview.art}
           description={asciiPreview.description}
+          autoInstruction={asciiAutoInstruction ?? undefined}
           onApply={art => {
             setSettings(s => ({ ...s, customAsciiArt: art, asciiArtSource: 'custom' }))
             setAsciiPreview(null)
+            setAsciiAutoInstruction(null)
           }}
-          onClose={() => setAsciiPreview(null)}
+          onClose={() => { setAsciiPreview(null); setAsciiAutoInstruction(null) }}
           onRequestAI={(currentArt, instruction) =>
             generateAsciiArt(activeProviderConfig, currentArt, instruction)
           }

@@ -202,6 +202,8 @@ export const en = {
   'cp.calcCopy': 'Enter to copy result',
   'cp.calcHint': 'type an expression, e.g. = 1920/2',
   'cp.chat.askAI': 'Ask AI: {query}',
+  'cp.chat.editAscii': 'Edit ASCII art: {query}',
+  'cp.chat.editAsciiHint': 'generate in preview',
   'cp.chat.streaming': 'streaming...',
   'cp.chat.enterHint': 'press ↵ to send',
   'cp.chat.turnsLabel': 'AI · {count} turns · not persisted',

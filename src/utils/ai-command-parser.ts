@@ -10,15 +10,10 @@ export type JournalWriter = (updater: (prev: Record<string, string>) => Record<s
 export type MemoryWriter = (keyword: string, url: string, source: 'ai') => Promise<unknown> | unknown
 export type AliasLookup = (key: string) => string | undefined
 
-/**
- * Callbacks the dispatcher may invoke. `onOpenAsciiPreview` is optional — when
- * absent, a `set_ascii_art` tool call returns an error instead of no-oping.
- */
 export interface DispatchCallbacks {
   saveMemory: MemoryWriter
   setJournal: JournalWriter
   resolveAlias: AliasLookup
-  onOpenAsciiPreview?: (data: { art: string; description?: string }) => void
 }
 
 /**
@@ -77,22 +72,6 @@ export async function dispatchToolCall(
           return { ...prev, [date]: existing + sep + `--- AI ---\n${text}` }
         })
         return { status: 'done', label: date }
-      }
-      case 'set_ascii_art': {
-        const art = String(args.art ?? '')
-        if (!art.trim()) {
-          return { status: 'error', label: 'set_ascii_art', error: 'Empty ASCII art' }
-        }
-        // Documented upper bound: 120 columns x 60 rows (~4 bytes/char headroom).
-        if (art.length > 120 * 60 * 4) {
-          return { status: 'error', label: 'set_ascii_art', error: 'ASCII art too large' }
-        }
-        if (!deps.onOpenAsciiPreview) {
-          return { status: 'error', label: 'set_ascii_art', error: 'ascii preview unavailable' }
-        }
-        const description = args.description !== undefined ? String(args.description) : undefined
-        deps.onOpenAsciiPreview({ art, description })
-        return { status: 'done', label: description ?? 'ascii art' }
       }
     }
   } catch (e) {
@@ -192,8 +171,7 @@ export function buildContext(
   tabs: { title: string; url: string }[],
   history: { title: string; url: string; ts?: number }[],
   memories: AIMemory[] = [],
-  currentAsciiArt?: string,
-): { aliases: string; bookmarks: string; tabs: string; history: string; memories: string; asciiArt: string } {
+): { aliases: string; bookmarks: string; tabs: string; history: string; memories: string } {
   return {
     aliases: aliases.map(a => `${a.key} -> ${a.url}`).join(', '),
     bookmarks: categories.flatMap(c =>
@@ -205,7 +183,5 @@ export function buildContext(
       return `${ago ? `[${ago}] ` : ''}${strip(h.title)}`
     }).join('; '),
     memories: memories.map(m => `${m.keyword} -> ${m.url}`).join('\n'),
-    // Not sanitized (sanitize would strip newlines); capped to bound token use.
-    asciiArt: currentAsciiArt && currentAsciiArt.trim() ? currentAsciiArt.slice(0, 8000) : '',
   }
 }
