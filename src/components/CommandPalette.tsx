@@ -4,9 +4,10 @@ import { useBookmarks, useLocalStorage, useSettings } from '../hooks/useLocalSto
 import type { UrlAlias, ThemeType } from '../types'
 import { Search, Earth } from 'lucide-react'
 import { openChromeNewTab } from './ChromeTabButton'
+import { AsciiPreviewPanel } from './AsciiPreviewPanel'
 import { recordTabUsage } from '../utils/tabUsage'
 import { useOpenTabs } from '../hooks/useOpenTabs'
-import { useAIProviders, type AIToolName } from '../hooks/useAIProviders'
+import { useAIProviders, generateAsciiArt, type AIToolName } from '../hooks/useAIProviders'
 import { useAIMemory } from '../hooks/useAIMemory'
 import { buildContext, fetchFrequentDestinations, fetchRecentHistory, dispatchToolCall } from '../utils/ai-command-parser'
 import { isSafeUrl } from '../utils/browser'
@@ -254,9 +255,11 @@ export function CommandPalette() {
   const [, setDailyGoal] = useLocalStorage<{ text: string; date: string } | null>('neko-daily-goal', null)
   const [, setScratchpad] = useLocalStorage<string>('neko-scratchpad', '')
   const { tabs } = useOpenTabs()
-  const { activeProvider, streamChat, loadProviders } = useAIProviders()
+  const { providers, activeProvider, streamChat, loadProviders } = useAIProviders()
+  const activeProviderConfig = providers.find(p => p.provider === activeProvider) ?? null
   const { memories, saveMemory } = useAIMemory()
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [asciiPreview, setAsciiPreview] = useState<{ art: string; description?: string } | null>(null)
   const [aiStreaming, setAiStreaming] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
   const pendingIdRef = useRef<string | null>(null)
@@ -403,6 +406,7 @@ export function CommandPalette() {
       recent.slice(0, 10).map(r => ({ title: r.label, url: r.url })),
       historyForContext,
       memories,
+      settings.customAsciiArt ?? settings.asciiArt,
     )
 
     try {
@@ -432,6 +436,7 @@ export function CommandPalette() {
             saveMemory,
             setJournal,
             resolveAlias,
+            onOpenAsciiPreview: ({ art, description }) => setAsciiPreview({ art, description }),
           })
           setMessages(prev => {
             const last = prev[prev.length - 1]
@@ -1052,6 +1057,23 @@ export function CommandPalette() {
       {toast && createPortal(
         <div className="cp-toast">{toast}</div>,
         document.body
+      )}
+
+      {/* ASCII art preview drawer — mounted only when the AI calls set_ascii_art */}
+      {asciiPreview && activeProviderConfig && (
+        <AsciiPreviewPanel
+          currentArt={settings.customAsciiArt ?? settings.asciiArt ?? ''}
+          art={asciiPreview.art}
+          description={asciiPreview.description}
+          onApply={art => {
+            setSettings(s => ({ ...s, customAsciiArt: art, asciiArtSource: 'custom' }))
+            setAsciiPreview(null)
+          }}
+          onClose={() => setAsciiPreview(null)}
+          onRequestAI={(currentArt, instruction) =>
+            generateAsciiArt(activeProviderConfig, currentArt, instruction)
+          }
+        />
       )}
     </>
   )

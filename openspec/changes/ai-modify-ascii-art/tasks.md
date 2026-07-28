@@ -30,12 +30,12 @@
 
 ## 5. CommandPalette 集成
 
-- [ ] 5.1 在 `src/components/CommandPalette.tsx` 中新增 `asciiPreview` state：`useState<{ art: string; description?: string } | null>(null)`
-- [ ] 5.2 在 `streamChat` 调用时传入 `currentAsciiArt: settings.customAsciiArt ?? settings.asciiArt`
-- [ ] 5.3 在 `dispatchToolCall` 的 callbacks 参数中追加 `onOpenAsciiPreview`
-- [ ] 5.4 在 CommandPalette 根节点底部挂载 `{asciiPreview && activeProvider && <AsciiPreviewPanel .../>}`，传 `onApply` → `setSettings`、`onClose` → `setAsciiPreview(null)`、`onRequestAI` → `generateAsciiArt(activeProvider, ...)`
-- [ ] 5.5 `npm run build`（0 错误）
-- [ ] 5.6 commit：`feat: CommandPalette 集成 AsciiPreviewPanel`
+- [x] 5.1 在 `src/components/CommandPalette.tsx` 中新增 `asciiPreview` state：`useState<{ art: string; description?: string } | null>(null)`
+- [x] 5.2 在 `streamChat` 调用时传入 `currentAsciiArt: settings.customAsciiArt ?? settings.asciiArt`
+- [x] 5.3 在 `dispatchToolCall` 的 callbacks 参数中追加 `onOpenAsciiPreview`
+- [x] 5.4 在 CommandPalette 根节点底部挂载 `{asciiPreview && activeProvider && <AsciiPreviewPanel .../>}`，传 `onApply` → `setSettings`、`onClose` → `setAsciiPreview(null)`、`onRequestAI` → `generateAsciiArt(activeProvider, ...)`
+- [x] 5.5 `npm run build`（0 错误）
+- [x] 5.6 commit：`feat: CommandPalette 集成 AsciiPreviewPanel`
 
 ## 6. i18n 文案 + 过时说明清理
 
