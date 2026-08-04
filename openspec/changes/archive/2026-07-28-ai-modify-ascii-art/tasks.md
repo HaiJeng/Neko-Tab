@@ -50,8 +50,8 @@
 
 - [x] 7.1 未配 AI provider：命令面板输入普通文本 → 只走搜索，无「修改 ASCII 艺术」与「Ask AI」项，无异常（dev server 验证）
 - [x] 7.2 修改现有（专用入口）：输入"给猫加个帽子" → 出现「修改 ASCII 艺术」候选项 → 点击 → Drawer 打开并自动生成首轮 → 预览可见 → Apply → 主界面 ASCII 更新且 asciiArtSource='custom'
-- [ ] 7.3 完全替换 + Discard：重新输入"换成一条龙" → Drawer 预览 → Discard → 主界面不变
+- [x] 7.3 完全替换 + Discard：重新输入"换成一条龙" → Drawer 预览 → Discard → 主界面不变
 - [x] 7.4 本地 chip + undo：Drawer 打开 → 点本地 chip（翻转/放大/裁空）即时生效、无网络 → undo 逐帧回退；asciiUtils 纯函数 15/15 断言通过
-- [ ] 7.5 自由输入：Drawer 内输入"更简约" → 发送 → 预览刷新
-- [ ] 7.6 ESC 关闭：Drawer 中按 ESC → 关闭，主界面不变
+- [x] 7.5 自由输入：Drawer 内输入"更简约" → 发送 → 预览刷新
+- [x] 7.6 ESC 关闭：Drawer 中按 ESC → 关闭，主界面不变
 - [x] 7.7 语言切换机制：/language English → 界面文案全英文，无 `[missing translation]`；切回中文正常（dev server 验证；Drawer 内文案待真实打开后复验）
